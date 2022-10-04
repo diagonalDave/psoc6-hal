@@ -10,5 +10,6 @@
 pub mod backup;
 pub mod cpuss;
 pub mod flashc;
+pub mod ipc;
 pub mod prot;
 pub mod system;

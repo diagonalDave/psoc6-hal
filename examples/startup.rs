@@ -12,6 +12,7 @@ use psoc6_hal::{
     delay::Delay,
     prelude::*,
     psoc::Psoc,
+    ipc::SystemChannel,
 };
 
 use cortex_m_rt::entry;
@@ -22,8 +23,12 @@ fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
     let psoc = Psoc::new();
     psoc.start_cm0p();
-    
-        
+    pub struct Data<'a>{
+        pub ptr: u32,
+        pub data: &'a str,
+    }
+    let dats = Data{ptr:3452u32,data: "stuff"};
+    psoc.ipc.send_data(/*ptr to dats*/SystemChannel::SyscallCm0, &dats.data);
     let mut led3 = psoc.gpio.p6_3.into_strong_output();
     let mut led4 = psoc.gpio.p7_1.into_strong_output();
 

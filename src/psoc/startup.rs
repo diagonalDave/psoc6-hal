@@ -6,6 +6,7 @@ use crate::psoc::Psoc;
 
 impl Psoc{
     pub fn start_cm0p(&self)->(){
+        /*Setup clocks and dependant peripherals*/
         //set wait states for worst case of hf_clk == 150Mhz
         self.cpuss.configure_wait_states(150_000_000, &self.modes.system_mode);
         self.flash.configure_wait_states(150_000_000, &self.modes.system_mode);
@@ -23,7 +24,7 @@ impl Psoc{
         }
         while self.backup.not_running(){}//wait for backup domain to power up.
         
-        //set the system and flash LDO to enable LP system mode.        
+        //LDO--set the system and flash LDO to enable LP system mode.        
         self.system.configure_ldo_mode(&self.modes.system_mode);
         self.flash.configure_ldo_mode(&self.modes.system_mode);
 
@@ -43,9 +44,15 @@ impl Psoc{
         self.cpuss.configure_systick_source();
         
         //set wait states for the system clocks with hf_clk == 100Mhz
-        self.cpuss.configure_wait_states(100_000_000, &self.modes.system_mode); // 100_000_000 clock freq
+        self.cpuss.configure_wait_states(100_000_000, &self.modes.system_mode); 
         self.flash.configure_wait_states(100_000_000, &self.modes.system_mode);  
+        /* End clock setup */
 
+        /*Setup IPC */
+        //IPC is configured as for Psoc startup code. Maybe needs refactoring
+        //once complete.
+        
+       
         
     }
 }

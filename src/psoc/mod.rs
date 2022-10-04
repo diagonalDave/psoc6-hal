@@ -10,6 +10,7 @@ use crate::drivers::{
     system::System,
     cpuss::Cpuss,
     flashc::Flash,
+//    ipc::Ipc,
     prot::Prot,
     backup::Backup,
 };
@@ -36,13 +37,14 @@ pub struct Psoc{
     system: System,
     cpuss: Cpuss,
     flash: Flash,
+//    pub ipc: Ipc,
     pub gpio: Parts,
     prot: Prot,
     modes: Modes,
     backup: Backup,
 }
 pub mod startup;
-
+pub mod pipes;
 impl Psoc{
    
     pub fn new() -> Psoc{
@@ -52,6 +54,7 @@ impl Psoc{
             system: System::from(p.SRSS),
             cpuss: Cpuss::from(p.CPUSS),
             flash: Flash::from(p.FLASHC),
+//            ipc: Ipc::from(p.IPC),
             gpio,
             prot: Prot::from(p.PROT),
             modes: Modes{
