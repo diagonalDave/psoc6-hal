@@ -3,13 +3,14 @@
 //! - Ram configuration -- ram module
 //! - Rom configuration -- rom module
 //! - Status, Identity and power control -- utility module
+//! - Interrupt configuration -- interrupt module
 
 use crate::pac::CPUSS;
 
 
 pub mod cores;
 pub mod utility;
-
+pub mod interrupt;
 
 pub struct Cpuss{
     pub cpuss: CPUSS,
