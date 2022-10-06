@@ -5,7 +5,7 @@ use cortex_m::peripheral::NVIC;
 #[cfg(feature = "cm0")]
 use crate::drivers::cpuss::interrupt::InterruptSource;
 
-#[cfg(any(feature = "cm0", feature = "cm4"))]
+#[cfg(feature = "cm4")]
 use crate::pac::Interrupt;
 
 pub struct Nvic{
