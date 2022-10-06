@@ -40,6 +40,8 @@ panic-semihosting = "0.5.2"
 [features]
 default = ["rt"]
 rt = ["psoc6-pac/rt"]
+cm0 = ["rt"]
+cm4 = ["rt"]
 
 [profile.dev]
 incremental = false

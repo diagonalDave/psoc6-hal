@@ -23,12 +23,12 @@ impl Cpuss{
         }else{
             ws_slow = 0x00;
         }        
-        self.cpuss.rom_ctl.modify(|_,w| unsafe{w.slow_ws().bits(ws_slow)} );
-        self.cpuss.rom_ctl.modify(|_,w| unsafe{w.fast_ws().bits(ws_fast)} );
+        self.cpu_sys.rom_ctl.modify(|_,w| unsafe{w.slow_ws().bits(ws_slow)} );
+        self.cpu_sys.rom_ctl.modify(|_,w| unsafe{w.fast_ws().bits(ws_fast)} );
 
         // SRAM
-        self.cpuss.ram0_ctl0.modify(|_,w| unsafe{w.slow_ws().bits(ws_slow)} );
-        self.cpuss.ram0_ctl0.modify(|_,w| unsafe{w.fast_ws().bits(ws_fast)} );
+        self.cpu_sys.ram0_ctl0.modify(|_,w| unsafe{w.slow_ws().bits(ws_slow)} );
+        self.cpu_sys.ram0_ctl0.modify(|_,w| unsafe{w.fast_ws().bits(ws_fast)} );
         //ramc1 and ramc2 mentioned in code but not in trm.
     }
     /// configure_systick_source is a minimal implementation to enable
@@ -37,7 +37,7 @@ impl Cpuss{
     #[allow(unsafe_code)]
     #[inline(always)]
     pub(crate) fn configure_systick_source(&self)->(){
-        self.cpuss.systick_ctl.modify(|_, w| unsafe{w.clock_source().bits(0x00)}); // Sets the ilo as source.
+        self.cpu_sys.systick_ctl.modify(|_, w| unsafe{w.clock_source().bits(0x00)}); // Sets the ilo as source.
     }
     
 }

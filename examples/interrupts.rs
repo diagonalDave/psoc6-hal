@@ -10,7 +10,7 @@ extern crate psoc6_hal;
 
 use cortex_m_rt::entry;
 
-use psoc6_hal::peripherals::delay::Delay;
+use psoc6_hal::delay::Delay;
 use psoc6_hal::prelude::*;
 use psoc6_pac::Peripherals;
 use crate::psoc6_hal::drivers::system::System;
@@ -47,5 +47,6 @@ fn main() -> ! {
         }else{
             //do nothing and wait for the wdt_reset.
         }
+        count += 1;
     }
 }

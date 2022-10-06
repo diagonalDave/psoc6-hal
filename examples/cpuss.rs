@@ -7,7 +7,7 @@ extern crate panic_semihosting;
 
 use cortex_m_rt::entry;
 
-use psoc6_hal::peripherals::delay::Delay;
+use psoc6_hal::delay::Delay;
 use psoc6_hal::prelude::*;
 use psoc6_hal::drivers::cpuss::Cpuss;
 

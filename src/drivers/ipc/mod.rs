@@ -36,54 +36,54 @@ impl Lock for Acquired {}
 impl Lock for Released {}
 
 
-// macro_rules! ipc{
-//     ([
-//         $($C:ident: ($c:ident, $structi:expr)),+
-//     ]) => {
-//        // use core::convert::Infallible;
-//         use crate::pac::IPC;
+macro_rules! ipc{
+    ([
+        $($C:ident: ($c:ident, $structi:expr)),+
+    ]) => {
+       // use core::convert::Infallible;
+        use crate::pac::IPC;
 
-//         //Create the channels
-//         pub struct Channels{
-//             $(
-//                 //Channel
-//                 pub $c: $C,
-//             )+
-//         }
-//         impl IpcChannel for IPC {
-//             type Channels = Channels;
-//             fn split(self) -> Channels {
-//                 Channels {
-//                     $(
-//                         $c: $C { _lock: PhantomData},
-//                     )+
-//                 }
-//             }
-//         }
-//         $(
-//             ///Channel
-//             pub struct $C <Released> {
-//                 _lock: PhantomData::<Released>
-//             }
-//             )+
+        //Create the channels
+        pub struct Channels{
+            $(
+                //Channel
+                pub $c: $C,
+            )+
+        }
+        impl IpcChannel for IPC {
+            type Channels = Channels;
+            fn split(self) -> Channels {
+                Channels {
+                    $(
+                        $c: $C { _lock: PhantomData},
+                    )+
+                }
+            }
+        }
+        $(
+            ///Channel
+            pub struct $C <Released> {
+                _lock: PhantomData::<Released>
+            }
+            )+
   
-//     };
-// }
+    };
+}
 
-// ipc! ([
-//     SyscallCm0: (syscall_cm0, struct0),
-//     SyscallCm4: (syscall_cm4, struct1),
-//     SyscallDap: (syscall_dap, struct2),
-//     Semaphores: (semaphores, struct4),
-//     PipeEp0: (pipe_ep0, struct5),
-//     PipeEp1: (pipe_ep1, struct6),
-//     Ddft: (ddft, struct7),
-//     Channel8: (channel8, struct8),
-//     Channel9: (channel9, struct9),
-//     Channel10: (channel10, struct10),
-//     Channel11: (channel11, struct11),
-//     Channel12: (channel12, struct12),
-//     Channel13: (channel13, struct13),
-//     Channel14: (channel14, struct14),
-//     Channel15: (channel15, struct15)
-//     ]);
+ipc! ([
+    SyscallCm0: (syscall_cm0, struct0),
+    SyscallCm4: (syscall_cm4, struct1),
+    SyscallDap: (syscall_dap, struct2),
+    Semaphores: (semaphores, struct4),
+    PipeEp0: (pipe_ep0, struct5),
+    PipeEp1: (pipe_ep1, struct6),
+    Ddft: (ddft, struct7),
+    Channel8: (channel8, struct8),
+    Channel9: (channel9, struct9),
+    Channel10: (channel10, struct10),
+    Channel11: (channel11, struct11),
+    Channel12: (channel12, struct12),
+    Channel13: (channel13, struct13),
+    Channel14: (channel14, struct14),
+    Channel15: (channel15, struct15)
+    ]);

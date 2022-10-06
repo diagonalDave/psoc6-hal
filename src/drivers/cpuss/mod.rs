@@ -7,19 +7,19 @@
 
 use crate::pac::CPUSS;
 
-
+pub mod nvic;
 pub mod cores;
 pub mod utility;
 pub mod interrupt;
 
 pub struct Cpuss{
-    pub cpuss: CPUSS,
+    pub cpu_sys: CPUSS,
 }
 
 impl Cpuss{
     fn new(cpuss: CPUSS) -> Cpuss{
         Cpuss{
-            cpuss,
+            cpu_sys: cpuss,
         }
     }
 }
