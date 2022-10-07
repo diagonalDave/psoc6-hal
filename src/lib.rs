@@ -4,6 +4,9 @@
 
 #![no_std]
 
+#[macro_use]
+extern crate bitfield;
+
 pub use embedded_hal as ehal;
 pub use psoc6_pac as pac;
 
