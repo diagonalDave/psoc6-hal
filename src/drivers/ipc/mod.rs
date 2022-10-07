@@ -23,13 +23,11 @@ pub enum Error {
     ReceiveFailed,
 }
 
-bitfield!{
-    pub struct ChannelConfig(u16);
-    impl Debug;
-    pub mask_release, set_mr: 15, 0;  //0x0000_ffff
-    pub mask_notify, set_mn: 31, 16;   // 0xffff_0000
-    pub set_release, set_sr: 47, 32;
-    pub set_notify, set_sn: 63, 48;
+pub struct ChannelConfig{
+    pub mask_release:u16,
+    pub mask_notify:u16,
+    pub set_release:u16,
+    pub set_notify:u16,
 }
 
 macro_rules! ipc{
@@ -151,7 +149,7 @@ macro_rules! ipc{
                 /// to transfer to the other CPU.
                 /// The return value is a  Released channel  or an Error.
                 //  
-                pub fn send_data_byte(self, data: u32, config: ChannelConfig ) -> Result<$C<Released>, Error>{
+                pub fn send_data_byte(self, data: u32, notify:u16 ) -> Result<$C<Released>, Error>{
                     
                     let data_lock = self.acquire_lock()?;
                     unsafe{
@@ -160,10 +158,8 @@ macro_rules! ipc{
                             .data
                             .write(|w| w.bits(data))
                     }
-                    data_lock.release_lock()?
-                        .notify(config.set_notify_mask);
-                    //TODO:data_unlocked.release_notify();
-                    
+                    let data_unlocked = data_lock.release_lock()?;
+                    data_unlocked.notify(notify);
                     Ok(data_unlocked)
                     
                  }
@@ -182,8 +178,12 @@ macro_rules! ipc{
                     Ok((data_unlocked, data))
                     
                  }
+                /// notify is used mainly for transferring data.
+                /// Writing the notify bits sends an event to the set 
+                /// interrupt structures that fire an interrupt. Indicating
+                /// to the other channel that data is ready.
                  #[inline(always)]
-                fn notify(self, notify_bits: u16) ->() {
+                fn notify(&self, notify_bits: u16) ->() {
                     unsafe{(*IPC::PTR)
                            .$structi
                            .notify
