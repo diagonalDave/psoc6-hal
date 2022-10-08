@@ -4,18 +4,22 @@
 
 use core::marker::PhantomData;
 use crate::pac::IPC;
-use bitfield;
+
+use bitflags::bitflags;
 
 pub trait IpcChannel{
     type Channels;
     fn split(self) -> Self::Channels;
 }
+#[derive(Debug)]
 pub struct Acquired;
+#[derive(Debug)]
 pub struct Released;
 pub trait Lock {}
 impl Lock for Acquired {}
 impl Lock for Released {}
 
+#[derive(Debug)]
 pub enum Error {
     AcquisitionFailed,
     ReleaseFailed,
@@ -23,11 +27,31 @@ pub enum Error {
     ReceiveFailed,
 }
 
+bitflags!{
+    #[derive(Debug)]
+    pub struct MaskBits:u16 {
+        const struct0 = (1 << 0);
+        const struct1 = (1 << 1);
+        const struct2 = (1 << 2);
+        const struct3 = (1 << 3);
+        const struct4 = (1 << 4);
+        const struct5 = (1 << 5);
+        const struct6 = (1 << 6);
+        const struct7 = (1 << 7);
+        const struct8 = (1 << 8);
+        const struct9 = (1 << 9);
+        const struct10 = (1 << 10);
+        const struct11 = (1 << 11);
+        const struct12 = (1 << 12);
+        const struct13 = (1 << 13);
+        const struct14 = (1 << 14);
+        const struct15 = (1 << 15);
+    }
+}
+#[derive(Debug)]
 pub struct ChannelConfig{
-    pub mask_release:u16,
-    pub mask_notify:u16,
-    pub set_release:u16,
-    pub set_notify:u16,
+    pub release_mask: MaskBits,
+    pub notify_mask: MaskBits,
 }
 
 macro_rules! ipc{
@@ -36,6 +60,7 @@ macro_rules! ipc{
     ]) => {
 
         //Create the channels
+        #[derive(Debug)]
         pub struct Channels{
             $(
                 //Channel
@@ -54,6 +79,7 @@ macro_rules! ipc{
         }
         $(
             ///Channel
+            #[derive(Debug)]
             pub struct $C<LOCK> {
                 _lock: PhantomData<LOCK>,
             }
@@ -85,14 +111,14 @@ macro_rules! ipc{
                             .write(|w|
                                     w
                                     .notify()
-                                    .bits(config.mask_notify));                   
+                                    .bits(config.notify_mask.bits()));                   
                         (*IPC::PTR)
                             .$intr_structi
                             .intr_mask
                             .write(|w|
                                     w
                                     .release()
-                                   .bits(config.mask_release));
+                                   .bits(config.release_mask.bits()));
 
                         Self{_lock: PhantomData::<Released>}
                     }
@@ -116,9 +142,15 @@ macro_rules! ipc{
                         Err(Error::AcquisitionFailed)
                     }
                 }
-                ///
-
-                pub fn send_data_ptr(self, data: *const u32 ) -> Result<$C<Released>, Error>{
+                /// send_data_ptr is used for sending more than one
+                /// byte of data between channels.
+                /// Input args are:
+                /// - a pointer to the data structure to send.
+                /// - a bit mask to set the notify interrupt
+                ///   (configured with configure interrupts function).
+                /// A Result is returned with a Released lock or an Error enum.
+                /// #Safety - Safe locked single instruction write to IPC PTR.
+                pub fn send_data_ptr(self, data: *const u32, notify: MaskBits ) -> Result<$C<Released>, Error>{
                     let data_lock = self.acquire_lock()?;
                     unsafe{
                         (*IPC::PTR)
@@ -126,12 +158,19 @@ macro_rules! ipc{
                             .data
                             .write(|w| w.bits(data as u32))
                     }
-                    let data_unlocked = data_lock.release_lock()?;
+                    let mut data_unlocked = data_lock.release_lock()?;
+                    data_unlocked.notify(notify);
                     Ok(data_unlocked)
                     
                 }
-
-                 pub fn receive_data_ptr(self) -> Result<($C<Released>, *const u32) , Error>{
+                /// recieve_data_ptr is used for receiving more than one
+                /// byte of data from a channel.
+                /// Input args are:
+                /// - a pointer to the data structure to send.
+                /// - a bit mask to clear the release interrupt
+                ///   (configured with configure interrupts function).
+                /// A Result is returned with a tuple of a (Released lock, data pointer) or an Error enum.
+                pub fn receive_data_ptr(self, release: MaskBits) -> Result<($C<Released>, *const u32) , Error>{
                      let data_lock = self.acquire_lock()?;
                      let ptr: *const u32;
                      unsafe{
@@ -141,7 +180,8 @@ macro_rules! ipc{
                              .read()
                              .bits() as *const u32
                      }
-                    let data_unlocked = data_lock.release_lock()?;
+                     let mut data_unlocked = data_lock.release_lock()?;
+                     data_unlocked.clear_release(release);
                     Ok((data_unlocked, ptr))
                     
                  }
@@ -149,7 +189,7 @@ macro_rules! ipc{
                 /// to transfer to the other CPU.
                 /// The return value is a  Released channel  or an Error.
                 //  
-                pub fn send_data_byte(self, data: u32, notify:u16 ) -> Result<$C<Released>, Error>{
+                pub fn send_data_byte(self, data: u32, notify:MaskBits ) -> Result<$C<Released>, Error>{
                     
                     let data_lock = self.acquire_lock()?;
                     unsafe{
@@ -158,13 +198,13 @@ macro_rules! ipc{
                             .data
                             .write(|w| w.bits(data))
                     }
-                    let data_unlocked = data_lock.release_lock()?;
+                    let mut  data_unlocked = data_lock.release_lock()?;
                     data_unlocked.notify(notify);
                     Ok(data_unlocked)
                     
                  }
 
-                 pub fn receive_data_byte(self) -> Result<($C<Released>, u32) , Error>{
+                 pub fn receive_data_byte(self, release: MaskBits) -> Result<($C<Released>, u32) , Error>{
                      let data_lock = self.acquire_lock()?;
                      let data: u32;
                      unsafe{
@@ -174,24 +214,61 @@ macro_rules! ipc{
                              .read()
                              .bits()
                      }
-                    let data_unlocked = data_lock.release_lock()?;
+                     let mut data_unlocked = data_lock.release_lock()?;
+                     data_unlocked.clear_release(release);
                     Ok((data_unlocked, data))
                     
                  }
                 /// notify is used mainly for transferring data.
                 /// Writing the notify bits sends an event to the set 
                 /// interrupt structures that fire an interrupt. Indicating
-                /// to the other channel that data is ready.
+                /// to the notify channels channel that data is ready.
                  #[inline(always)]
-                fn notify(&self, notify_bits: u16) ->() {
+                fn notify(&mut self, notify_set: MaskBits) ->() {
                     unsafe{(*IPC::PTR)
-                           .$structi
-                           .notify
+                           .$intr_structi
+                           .intr_set
                            .write(|w|
-                                  w.intr_notify()
-                                  .bits(notify_bits))
+                                  w.notify()
+                                  .bits(notify_set.bits()))
                     }
 
+                }
+                /// release is used by software to set the interrupt bit for each of the
+                /// notify_set bits. This fires the release interrupt for any of the configured
+                /// channels. Typically this is left to the hardware.
+                 #[inline(always)]
+                fn release(&mut self, notify_set: MaskBits) ->() {
+                    unsafe{(*IPC::PTR)
+                           .$intr_structi
+                           .intr_set
+                           .write(|w|
+                                  w.notify()
+                                  .bits(notify_set.bits()))
+                    }
+
+                }
+                /// clear_release clears any release interrupts for each of the release_set bits.
+                #[inline(always)]
+                fn clear_release(&mut self, release_set: MaskBits)->(){
+                    unsafe{(*IPC::PTR)
+                           .$intr_structi
+                           .intr
+                           .write(|w|
+                                  w.release()
+                                  .bits(release_set.bits()))
+                    }
+                }
+                /// clear_notifications clears any notification interrupts for each of the notify_set bits.
+                #[inline(always)]
+                fn clear_notify(&mut self, notify_set: MaskBits)->(){
+                    unsafe{(*IPC::PTR)
+                           .$intr_structi
+                           .intr
+                           .write(|w|
+                                  w.notify()
+                                  .bits(notify_set.bits()))
+                    }
                 }
             }
             impl $C<Acquired>{
@@ -221,18 +298,19 @@ macro_rules! ipc{
 
 ipc!([
     SyscallCm0: (syscall_cm0, struct0, intr_struct0, Released),
-    SyscallCm4: (syscall_cm4, struct1, intr_struct1, Released)
-    // SyscallDap: (syscall_dap, struct2),
-    // Semaphores: (semaphores, struct4),
-    // PipeEp0: (pipe_ep0, struct5),
-    // PipeEp1: (pipe_ep1, struct6),
-    // Ddft: (ddft, struct7),
-    // Channel8: (channel8, struct8),
-    // Channel9: (channel9, struct9),
-    // Channel10: (channel10, struct10),
-    // Channel11: (channel11, struct11),
-    // Channel12: (channel12, struct12),
-    // Channel13: (channel13, struct13),
-    // Channel14: (channel14, struct14),
-    // Channel15: (channel15, struct15)
+    SyscallCm4: (syscall_cm4, struct1, intr_struct1, Released),
+    SyscallDap: (syscall_dap, struct2, intr_struct2, Released),
+    Semaphores: (semaphores, struct4, intr_struct4, Released),
+    PipeEp0: (pipe_ep0, struct5, intr_struct5, Released),
+    PipeEp1: (pipe_ep1, struct6, intr_struct6, Released),
+
+    Ddft: (ddft, struct7, intr_struct7, Released),
+    Channel8: (channel8, struct8, intr_struct8, Released),
+    Channel9: (channel9, struct9, intr_struct9, Released),
+    Channel10: (channel10, struct10, intr_struct10, Released),
+    Channel11: (channel11, struct11, intr_struct11, Released),
+    Channel12: (channel12, struct12, intr_struct12, Released),
+    Channel13: (channel13, struct13, intr_struct13, Released),
+    Channel14: (channel14, struct14, intr_struct14, Released),
+    Channel15: (channel15, struct15, intr_struct15, Released)
     ]);

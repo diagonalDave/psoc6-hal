@@ -2,10 +2,10 @@
 //! functions from the PAC.
 use cortex_m::peripheral::NVIC;
 
-#[cfg(feature = "cm0")]
+#[cfg(armv6m)]
 use crate::drivers::cpuss::interrupt::InterruptSource;
 
-#[cfg(feature = "cm4")]
+#[cfg(armv7em)]
 use crate::pac::Interrupt;
 
 pub struct Nvic{
@@ -18,7 +18,7 @@ impl Nvic{
             nvic,
         }
     }
-    #[cfg(feature="cm0")]
+    #[cfg(armv6m)]
     #[inline]
     pub unsafe fn configure_interrupt(&mut self, irqn: InterruptSource, priority:u8)-> (){
         
@@ -34,7 +34,7 @@ impl Nvic{
         //release any pending interrupts for source.
         self.clear_interrupt(irqn);
     }
-    #[cfg(feature="cm0")]
+    #[cfg(armv6m)]
     #[inline]
     fn clear_interrupt(&self, irqn: InterruptSource) ->(){
         NVIC::unpend(irqn);
@@ -45,7 +45,7 @@ impl Nvic{
     ///  - priority based critical sections.
     ///  - mask based critical sections.
     //  otherwise safe.
-    #[cfg(feature="cm4")]
+    #[cfg(armv7em)]
     #[inline]
     pub unsafe fn configure_interrupt(&mut self, irqn: Interrupt, priority:u8)-> (){
         
@@ -59,7 +59,7 @@ impl Nvic{
         //release any pending interrupts for source.
         self.clear_interrupt(irqn);
     }
-    #[cfg(feature="cm4")]
+    #[cfg(armv7em)]
     #[inline]
     pub fn clear_interrupt(&self, irqn: Interrupt) ->(){
         NVIC::unpend(irqn);

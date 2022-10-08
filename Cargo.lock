@@ -18,10 +18,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
 
 [[package]]
-name = "bitfield"
-version = "0.14.0"
+name = "bitflags"
+version = "2.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d7e60934ceec538daadb9d8432424ed043a904d8e0243f3c6446bce549a46ac"
+checksum = "e196f430604fcd7503056c5aaa7dfc5bc570582b928240622b075b5cad3b90dd"
 
 [[package]]
 name = "cast"
@@ -39,7 +39,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70858629a458fdfd39f9675c4dc309411f2a3f83bede76988d81bf1a0ecee9e0"
 dependencies = [
  "bare-metal",
- "bitfield 0.13.2",
+ "bitfield",
  "embedded-hal",
  "volatile-register",
 ]
@@ -151,7 +151,7 @@ dependencies = [
 name = "psoc6-hal"
 version = "0.1.0"
 dependencies = [
- "bitfield 0.14.0",
+ "bitflags",
  "cast",
  "cortex-m",
  "cortex-m-rt",
@@ -161,6 +161,7 @@ dependencies = [
  "panic-halt",
  "panic-semihosting",
  "psoc6-pac",
+ "vcell",
 ]
 
 [[package]]
