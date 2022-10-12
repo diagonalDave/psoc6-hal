@@ -1,12 +1,16 @@
 //! ipc/mod.rs implements inter-core communication using the
 //! inter-process communication (IPC) registers.
-
+//! Message passing between cores is implemented using the IPC registers
+//! Essentially any messages can be shared but the systems using the
+//! IPC are the BLE subsystem and the Flash subsystem
+//!
 
 use core::marker::PhantomData;
 use crate::pac::IPC;
 
 use bitflags::bitflags;
 
+pub mod semaphore;
 pub trait IpcChannel{
     type Channels;
     fn split(self) -> Self::Channels;
@@ -48,6 +52,17 @@ bitflags!{
         const struct15 = (1 << 15);
     }
 }
+// Not sure semaphores provide anything for the IPC. All the code that uses
+// semaphores doesn't use set_sema and code that adheres to some form of
+// semaphore goes into a count cycle loop inside a critical section till
+// the semaphore is cleared. Meaning nothing else can happen on the cpu until the
+//semaphore is cleared. Seems saner to hold the IPC lock until the data is read,
+// rather than make the system more complex for no reason.
+
+// bitflags!{
+//     #[derive(Debug)]
+//     pub struct Semaphores:u32{
+// }
 #[derive(Debug)]
 pub struct ChannelConfig{
     pub release_mask: MaskBits,

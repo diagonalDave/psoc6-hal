@@ -1,7 +1,11 @@
 //! startup.rs implments the required functions for starting
 //! both the Cm0p and Cm4 cores.
 use crate::drivers::system::reset_cause::ResetCause;
-
+use crate::drivers::ipc::{
+    ChannelConfig,
+    IpcChannel,
+    MaskBits,
+};
 use crate::psoc::Psoc;
 
 impl Psoc{
