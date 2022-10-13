@@ -10,7 +10,11 @@ use crate::drivers::{
     system::System,
     cpuss::Cpuss,
     flashc::Flash,
-//    ipc::Ipc,
+    ipc::{
+        IpcChannel,
+        Channels,
+        semaphore::Semaphore,
+    },
     prot::Prot,
     backup::Backup,
 };
@@ -32,16 +36,20 @@ pub struct Modes{
     cm4: CpuMode,
     system_mode: SystemMode,
 }
+pub struct State{
+    semaphore: Semaphore,
+}
 
 pub struct Psoc{
     system: System,
     cpuss: Cpuss,
     flash: Flash,
-//    pub ipc: Ipc,
+    pub ipc: Channels,
     pub gpio: Parts,
     prot: Prot,
     modes: Modes,
     backup: Backup,
+    state: State
 }
 pub mod startup;
 pub mod pipes;
@@ -54,7 +62,7 @@ impl Psoc{
             system: System::from(p.SRSS),
             cpuss: Cpuss::from(p.CPUSS),
             flash: Flash::from(p.FLASHC),
-//            ipc: Ipc::from(p.IPC),
+            ipc: p.IPC.split(),
             gpio,
             prot: Prot::from(p.PROT),
             modes: Modes{
@@ -63,6 +71,9 @@ impl Psoc{
                 system_mode: SystemMode::Lp,
             },
             backup: Backup::from(p.BACKUP),
+            state: State{
+                semaphore: Semaphore::new(),
+            }
         }
     }
     

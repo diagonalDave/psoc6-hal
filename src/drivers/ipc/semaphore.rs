@@ -25,10 +25,7 @@
 //   6. Releases the Semaphore channel.
 
 use core::marker::PhantomData;
-use crate::drivers::ipc::{
-    Ipc,
-    ChannelConfig
-};
+
 
 pub struct Semaphore{
     flags: u128,
@@ -61,6 +58,8 @@ impl Core for Cm4 {}
 
 impl Semaphore {
     pub fn new() -> Semaphore {
+        //create IPC channel
+
         Self {
             flags: 0u128,
         }

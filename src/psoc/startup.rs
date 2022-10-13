@@ -1,11 +1,8 @@
 //! startup.rs implments the required functions for starting
 //! both the Cm0p and Cm4 cores.
 use crate::drivers::system::reset_cause::ResetCause;
-use crate::drivers::ipc::{
-    ChannelConfig,
-    IpcChannel,
-    MaskBits,
-};
+
+
 use crate::psoc::Psoc;
 
 impl Psoc{
@@ -51,12 +48,19 @@ impl Psoc{
         self.cpuss.configure_wait_states(100_000_000, &self.modes.system_mode); 
         self.flash.configure_wait_states(100_000_000, &self.modes.system_mode);  
         /* End clock setup */
-
+        
         /*Setup IPC */
         //IPC is configured as for Psoc startup code. Maybe needs refactoring
         //once complete.
-        
+        self.startup_ipc_system();
        
+        
+    }
+    /// startup_ipc intialises the core communication infrastructure.
+    pub(crate)fn startup_ipc_system(&self)-> (){
+        //Configure the semaphores channel.
+        //
+        
         
     }
 }
