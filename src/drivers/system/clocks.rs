@@ -36,7 +36,7 @@
 //!
 
 #![deny(unsafe_code)]
-#![deny(warnings)]
+#![deny(warnings)] 
 
 use cortex_m::asm::delay;
 
@@ -191,6 +191,7 @@ pub enum FllCco{
 
 impl System{
     ///
+    #[allow(dead_code)]
     pub(crate) fn configure_system_clocks(&self)->(){
         let _ = self.configure_lfclk_source(Clocks::Ilo);
         
@@ -427,10 +428,12 @@ impl System{
     /// TODO: needs full implementation.
     #[allow(unsafe_code)]
     #[inline(always)]
+    #[allow(dead_code)]
     pub(crate) fn configure_timer_clock(&self)->(){
         self.srss.clk_timer_ctl.modify(|_,w| w.timer_sel().imo());  //choose the imo as the source
         self.srss.clk_timer_ctl.modify(|_,w| unsafe{w.timer_div().bits(0x0)}); // set the divider to 1
     }
+    #[allow(dead_code)]
     #[inline(always)]
     pub(crate) fn start_timer_clock(&self)->(){
         self.srss.clk_timer_ctl.modify(|_,w| w.enable().set_bit());
@@ -438,6 +441,7 @@ impl System{
     /// configure_clock_pump is a minimal implementation to enable
     /// start up.
     /// TODO: needs full implementation.
+    #[allow(dead_code)]
     #[allow(unsafe_code)]
     #[inline(always)]
     pub(crate) fn configure_clock_pump(&self)->(){
@@ -452,6 +456,7 @@ impl System{
      /// configure_clock_pump is a minimal implementation to enable
     /// start up.
     /// TODO: needs full implementation.
+    #[allow(dead_code)]
     #[allow(unsafe_code)]
     #[inline(always)]
     pub(crate) fn configure_ilo_hibernate(&self)->(){

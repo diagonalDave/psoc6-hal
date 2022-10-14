@@ -10,10 +10,10 @@ extern crate psoc6_hal;
 
 use cortex_m_rt::entry;
 
+use crate::psoc6_hal::drivers::system::System;
 use psoc6_hal::delay::Delay;
 use psoc6_hal::prelude::*;
 use psoc6_pac::Peripherals;
-use crate::psoc6_hal::drivers::system::System;
 
 #[entry]
 fn main() -> ! {
@@ -35,16 +35,16 @@ fn main() -> ! {
     led_green.set_low().unwrap();
     delay.delay_ms(4000u32);
     led_green.set_high().unwrap();
-    
+
     loop {
         led_red.set_low().unwrap();
         delay.delay_ms(400u32);
 
         led_red.set_high().unwrap();
         delay.delay_ms(400u32);
-        if count < 5{
+        if count < 5 {
             system.wdt_feed();
-        }else{
+        } else {
             //do nothing and wait for the wdt_reset.
         }
         count += 1;

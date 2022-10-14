@@ -51,8 +51,7 @@ pub struct Psoc{
     backup: Backup,
     state: State
 }
-pub mod startup;
-pub mod pipes;
+
 impl Psoc{
    
     pub fn new() -> Psoc{

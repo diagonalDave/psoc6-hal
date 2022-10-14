@@ -13,9 +13,6 @@ extern crate psoc6_hal;
 use cortex_m_rt::entry;
 //use cortex_m_semihosting::hprintln;
 
-
-
-
 #[entry]
 fn main() -> ! {
     let p = psoc6_pac::Peripherals::take().unwrap();
@@ -23,8 +20,6 @@ fn main() -> ! {
     let ipc = p.IPC.split();
 
     let _syscall0 = ipc.syscall_cm0;
-    
-    loop {
 
-    }
+    loop {}
 }

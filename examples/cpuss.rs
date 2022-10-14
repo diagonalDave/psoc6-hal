@@ -8,8 +8,8 @@ extern crate panic_semihosting;
 use cortex_m_rt::entry;
 
 use psoc6_hal::delay::Delay;
-use psoc6_hal::prelude::*;
 use psoc6_hal::drivers::cpuss::Cpuss;
+use psoc6_hal::prelude::*;
 
 #[entry]
 fn main() -> ! {
@@ -27,7 +27,6 @@ fn main() -> ! {
     cpuss.cores_cm4_init_clocks(0x01);
     cpuss.cores_cm0_init_clocks(0x01, 0x00);
 
-    
     loop {
         led3.set_low().unwrap();
         led4.set_high().unwrap();

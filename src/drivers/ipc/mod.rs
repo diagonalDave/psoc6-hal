@@ -10,11 +10,12 @@ use core::marker::PhantomData;
 
 use bitflags::bitflags;
 pub mod semaphore;
-
+pub mod pipes;
 pub trait IpcChannel {
     type Channels;
     fn split(self) -> Self::Channels;
 }
+
 #[derive(Debug)]
 pub struct Acquired;
 #[derive(Debug)]
@@ -22,6 +23,7 @@ pub struct Released;
 pub trait Lock {}
 impl Lock for Acquired {}
 impl Lock for Released {}
+
 
 #[derive(Debug)]
 pub enum Error {
@@ -31,34 +33,88 @@ pub enum Error {
     ReceiveFailed,
     ChannelBusy,
 }
-
 bitflags! {
-    #[derive(Debug)]
-    pub struct MaskBits:u32 {
-        const struct0 = (1 << 0);            // syscall_cm0
-        const struct1 = (1 << 1);            // syscall_cm4
-        const struct2 = (1 << 2);            // syscall_dap
-        const struct3 = (1 << 3);            // not used
-        const struct4 = (1 << 4);            // semaphores
-        const struct5 = (1 << 5);            // ep0
-        const struct6 = (1 << 6);            // ep1
-        const struct7 = (1 << 7);            // ddft
-        const struct8 = (1 << 8);
-        const struct9 = (1 << 9);
-        const struct10 = (1 << 10);
-        const struct11 = (1 << 11);
-        const struct12 = (1 << 12);
-        const struct13 = (1 << 13);
-        const struct14 = (1 << 14);
-        const struct15 = (1 << 15);
-        const none = (1 >> 1);                //the zero option.
+    #[derive(Debug, Eq, PartialEq)]
+    pub struct InterruptMaskBits:u32 {
+        const cpuss_interrupt0 = (1 << 0); 
+        const cpuss_interrupt1 = (1 << 1); 
+        const cpuss_interrupt2 = (1 << 2); 
+        const cpuss_interrupt3 = (1 << 3); 
+        const cpuss_interrupt4 = (1 << 4); 
+        const cpuss_interrupt5 = (1 << 5); 
+        const cpuss_interrupt6 = (1 << 6); 
+        const cpuss_interrupt7 = (1 << 7); 
+        const cpuss_interrupt8 = (1 << 8);
+        const cpuss_interrupt9 = (1 << 9);
+        const cpuss_interrupt10 = (1 << 10);
+        const cpuss_interrupt11 = (1 << 11);
+        const cpuss_interrupt12 = (1 << 12);
+        const cpuss_interrupt13 = (1 << 13);
+        const cpuss_interrupt14 = (1 << 14);
+        const cpuss_interrupt15 = (1 << 15);
+        const none              = (1 >> 1);
     }
 }
-
+bitflags! {
+    #[derive(Debug, Eq, PartialEq)]
+    pub struct InterruptStructMaskBits:u32 {
+        const syscall_cm0 = (1 << 0);            // syscall_cm0
+        const syscall_cm4 = (1 << 1);            // syscall_cm4
+        const syscall_dap = (1 << 2);            // syscall_dap
+        const unused      = (1 << 3);            // not used
+        const semaphores  = (1 << 4);            // semaphores
+        const ep0         = (1 << 5);            // ep0
+        const ep1         = (1 << 6);            // ep1
+        const ddft        = (1 << 7);            // ddft       
+        const struct8     = (1 << 8);
+        const struct9     = (1 << 9);
+        const struct10    = (1 << 10);
+        const struct11    = (1 << 11);
+        const struct12    = (1 << 12);
+        const struct13    = (1 << 13);
+        const struct14    = (1 << 14);
+        const struct15    = (1 << 15);
+        const none        = (1 >> 1);                //the zero option.
+    }
+}
+bitflags! {
+    #[derive(Debug, Eq, PartialEq)]
+    pub struct ChannelMaskBits:u32 {
+        const syscall_cm0 = (1 << 0);            // syscall_cm0
+        const syscall_cm4 = (1 << 1);            // syscall_cm4
+        const syscall_dap = (1 << 2);            // syscall_dap
+        const unused      = (1 << 3);            // not used
+        const semaphores  = (1 << 4);            // semaphores
+        const ep0         = (1 << 5);            // ep0
+        const ep1         = (1 << 6);            // ep1
+        const ddft        = (1 << 7);            // ddft       
+        const struct8     = (1 << 8);
+        const struct9     = (1 << 9);
+        const struct10    = (1 << 10);
+        const struct11    = (1 << 11);
+        const struct12    = (1 << 12);
+        const struct13    = (1 << 13);
+        const struct14    = (1 << 14);
+        const struct15    = (1 << 15);
+        const none        = (1 >> 1);                //the zero option.
+    }
+}
+/// ChannelConfig holds configuration masks that enable the configuration of the
+/// path of release/notify events to an interrupt.
+/// The release_mask and notify_mask associate the IPC channel with zero or more
+/// Interrupt structures.
+/// The intr_release_mask adn intr_notify_mask associate the Interrupt structure
+/// with zero or more CPUSS_IPC interrupts.
+/// --release_mask: release events sent to all intr_struct with set bits.                  
+/// --notify_mask: notify events sent to all intr_struct with set bits.                   
+/// --intr_release_mask: release event from configured channel triggers interrupt with set bits
+/// --intr_notify_mask: notify event from configured channel triggers interrupt with set bits  
 #[derive(Debug)]
 pub struct ChannelConfig {
-    pub release_mask: MaskBits,
-    pub notify_mask: MaskBits,
+    pub release_mask: InterruptStructMaskBits,           // release events sent to all intr_struct with set bits.                      
+    pub notify_mask: InterruptStructMaskBits,            // notify events sent to all intr_struct with set bits.                        
+    pub intr_release_mask: InterruptMaskBits,      // release event from configured channel triggers interrupt with set bits
+    pub intr_notify_mask: InterruptMaskBits,       // notify event from configured channel triggers interrupt with set bits  
 }
 
 macro_rules! ipc{
@@ -95,12 +151,12 @@ macro_rules! ipc{
                 pub fn into_released(self)->$C<Released>{
                     $C{ _lock: PhantomData }
                 }
-                /// release_lock releases the channel lock and causes a release
-                /// interrupt for the bits set in the release_intr_mask.
-                /// If no interrupt is required clear all bits in release_intr_mask.
-                 // #Safety - Single instruction read.
+                // release_lock releases the channel lock and causes a release
+                // interrupt for the bits set in the release_intr_mask.
+                // If no interrupt is required clear all bits in release_intr_mask.
+                // #Safety - Single instruction read.
                 #[inline]
-                fn release_lock(self, release_intr_mask: MaskBits) ->Result<$C<Released>, Error> {
+                fn release_lock(self, release_intr_mask: InterruptStructMaskBits) ->Result<$C<Released>, Error> {
                     unsafe{(*IPC::PTR)
                                  .$structi
                                  .release
@@ -109,10 +165,10 @@ macro_rules! ipc{
                                         .bits(release_intr_mask.bits() as u16))}
                     Ok( $C{ _lock: PhantomData::<Released>})
                 }
-                /// notify sends a notification to all the IPC Interrupt structures
-                /// that have a set bit in notify_intr_mask.
+                // notify sends a notification to all the IPC Interrupt structures
+                // that have a set bit in notify_intr_mask.
                  #[inline(always)]
-                fn notify(&mut self, notify_intr_mask: MaskBits) ->() {
+                fn notify(&mut self, notify_intr_mask: InterruptStructMaskBits) ->() {
                     unsafe{(*IPC::PTR)
                            .$structi
                            .notify
@@ -123,50 +179,16 @@ macro_rules! ipc{
                 }
             }
             impl $C<Released>{
-                /// configure_release_interrupts configures the interrupt structure.
-                /// When a release event occurs the configured interrupt structures
-                /// are sent an event. When this interrupt structure receives and event
-                /// all the set bits in the mask will trigger interrupts.
-                /// e.g. when ipc_intr_struct3 recieves an event and
-                /// has a mask of 0x0001 then the CPUSS_INTERRUPTS_IPC_0 will be triggered.
-                /// Any ipc_channel can be configured to use any of the ipc_intr_structs
-                /// So if IPC struct0 (IPC_channel0) configures its ipc_struct_intr
-                /// with mask 0x0004 then the intr_struct3 will recieve an interrupt
-                /// event which will then trigger the masked interrupts.
-                ///
-                /// The interrupts can also be managed directly by the intr_structs:
-                /// - Read the INTR_MASKED register to find any active interrupts for
-                ///   the interrupt structure.
-                /// - To activate an interrupt, write to the SET register.
-                /// - To clear an interrupt, write to the INTR register.
-                #[inline(always)]
-                pub fn configure_release_interrupts(& self, release_intr_mask: MaskBits)-> (){
-                    // #safety: two writes as per IPC chapter 6 pp 40 in TRM.
-                    unsafe{
-                        (*IPC::PTR)
-                            .$intr_structi
-                            .intr_mask
-                            .write(|w|
-                                    w
-                                    .release()
-                                   .bits(release_intr_mask.bits()as u16));
-                    }
+                /// configure_channel configures the channel release and notify channels,
+                /// and the interrupt structure interrupts and mask.
+                #[inline]
+                pub fn configure_channel(self, channel_config: ChannelConfig)-> Result<$C<Released>, Error>{
+                    let mut channel = self.acquire_lock()?; //.unwrap();
+                    channel.configure_channel_release_intr_structure(channel_config.intr_release_mask);
+                    channel.configure_channel_notify_intr_structure(channel_config.intr_notify_mask);
+                    channel.release_lock(InterruptStructMaskBits::none)
                 }
-                /// configure_notify_interrupts behave similarly to configure_release_interrupts.
-                #[inline(always)]                
-                pub fn configure_notify_interrupts(& self, notify_intr_mask: MaskBits)-> (){
-                    // #safety: two writes as per IPC chapter 6 pp 40 in TRM.
-                    unsafe{
-                        (*IPC::PTR)
-                            .$intr_structi
-                            .intr_mask
-                            .write(|w|
-                                    w
-                                    .notify()
-                                    .bits(notify_intr_mask.bits() as u16));
-                    }
-
-                }
+                
                 /// acquire_lock attempts to acquire an IPC channel lock.
                 /// When acquired a Channel is returned that can be used to
                 /// send data.
@@ -192,7 +214,8 @@ macro_rules! ipc{
                     }
                 }
                
-                
+            }
+            impl $C<Acquired>{
                 // write_data_register writes directly to the IPC channel data register.
                 // Don't use this method directly use the HAL IPC functionality.
                 // byte of data between channels.
@@ -201,7 +224,7 @@ macro_rules! ipc{
                 // () is returned.
                 // #Safety - Safe locked single instruction write to IPC PTR.
                 #[inline(always)]
-                pub(crate) fn write_data_register(self, data: u32, notify:MaskBits ) -> (){
+                pub(crate) fn write_data_register(self, data: u32) -> (){
                     unsafe{
                         (*IPC::PTR)
                             .$structi
@@ -215,7 +238,7 @@ macro_rules! ipc{
                 // IPC Channel methods.
                 // Safety: Deref of PAC pointer.
                 #[inline(always)]
-                pub(crate) fn receive_data_register(self, release: MaskBits) -> u32{
+                pub(crate) fn receive_data_register(self) -> u32{
                     unsafe{
                         (*IPC::PTR)
                             .$structi
@@ -231,7 +254,7 @@ macro_rules! ipc{
                 //A notification will be sent to every structure with
                 //a set bit.
                  #[inline(always)]
-                fn configure_channel_notify_intr_structure(&mut self, intr_structure_mask: MaskBits) ->() {
+                fn configure_channel_notify_intr_structure(&mut self, intr_structure_mask: InterruptMaskBits) ->() {
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr_mask
@@ -243,7 +266,8 @@ macro_rules! ipc{
                 // configure_channel_release_intr_structure works similarly to
                 // configure_channel_notify_intr_structure.
                  #[inline(always)]
-                fn configure_channel_release_intr_structure(&mut self, intr_structure_mask: MaskBits) ->() {
+                fn configure_channel_release_intr_structure(&mut self, intr_structure_mask: InterruptMaskBits) ->() {
+                    needs thought about MaskBits naming.
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr_mask
@@ -256,7 +280,7 @@ macro_rules! ipc{
                 // interrupts set for the associated IPC channel
                 // interrupt structure.
                 #[inline(always)]
-                fn clear_release_interrupts(&mut self, release_mask: MaskBits)->(){
+                fn clear_release_interrupts(&mut self, release_mask: InterruptMaskBits)->(){
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr
@@ -268,7 +292,7 @@ macro_rules! ipc{
                 /// clear_notify_interrupts clears any notification interrupts set for the
                 /// associated IPC channel interrupt structure.
                 #[inline(always)]
-                fn clear_notify_interrupts(&mut self, notify_mask: MaskBits)->(){
+                fn clear_notify_interrupts(&mut self, notify_mask: InterruptMaskBits)->(){
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr

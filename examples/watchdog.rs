@@ -11,10 +11,9 @@ extern crate psoc6_hal;
 use cortex_m_rt::entry;
 
 use psoc6_hal::delay::Delay;
+use psoc6_hal::drivers::system::{reset_cause, System};
 use psoc6_hal::prelude::*;
 use psoc6_pac::Peripherals;
-use psoc6_hal::drivers::system::{System, reset_cause};
-
 
 #[entry]
 fn main() -> ! {
@@ -36,9 +35,9 @@ fn main() -> ! {
     // Once the WDT has reset the device only the led_green should be on
     // after reset.
     let last_reset = system.last_reset(); //separated to simplify debugging.
-    if last_reset == reset_cause::ResetCause::WDTReset{
+    if last_reset == reset_cause::ResetCause::WDTReset {
         led_red.set_high().unwrap();
-    }else{
+    } else {
         led_red.set_low().unwrap();
     }
     led_green.set_low().unwrap();
@@ -51,7 +50,7 @@ fn main() -> ! {
 
         led_red.set_high().unwrap();
         delay.delay_ms(400u32);
-        if count < 5{
+        if count < 5 {
             system.wdt_feed();
         }
         count += 1;
