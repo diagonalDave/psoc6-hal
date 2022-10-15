@@ -7,13 +7,20 @@
 
 use crate::pac::IPC;
 use core::marker::PhantomData;
-
 use bitflags::bitflags;
 pub mod semaphore;
 pub mod pipes;
 pub trait IpcChannel {
     type Channels;
     fn split(self) -> Self::Channels;
+}
+/// IpcChannelCallback trait must be implemented by any IPC channel
+/// when custom actions are required  by client for any IPC channel
+/// release or notify events.
+pub trait IpcCallback{
+    type DataType;
+    fn notify_callback(message: Self::DataType) -> ();
+    fn release_callback() -> ();
 }
 
 #[derive(Debug)]
@@ -33,6 +40,7 @@ pub enum Error {
     ReceiveFailed,
     ChannelBusy,
 }
+
 bitflags! {
     #[derive(Debug, Eq, PartialEq)]
     pub struct InterruptMaskBits:u32 {
@@ -57,7 +65,7 @@ bitflags! {
 }
 bitflags! {
     #[derive(Debug, Eq, PartialEq)]
-    pub struct InterruptStructMaskBits:u32 {
+    pub struct ChannelStructMaskBits:u32 {
         const syscall_cm0 = (1 << 0);            // syscall_cm0
         const syscall_cm4 = (1 << 1);            // syscall_cm4
         const syscall_dap = (1 << 2);            // syscall_dap
@@ -108,13 +116,23 @@ bitflags! {
 /// --release_mask: release events sent to all intr_struct with set bits.                  
 /// --notify_mask: notify events sent to all intr_struct with set bits.                   
 /// --intr_release_mask: release event from configured channel triggers interrupt with set bits
-/// --intr_notify_mask: notify event from configured channel triggers interrupt with set bits  
+/// --intr_notify_mask: notify event from configured channel triggers interrupt with set bits
+/// Configure the channel notify and release masks to use zero or more particular Interrupt structure
+/// Configure the Interrupt structure release and notify masks to use zero or more particular interrupt.
 #[derive(Debug)]
 pub struct ChannelConfig {
-    pub release_mask: InterruptStructMaskBits,           // release events sent to all intr_struct with set bits.                      
-    pub notify_mask: InterruptStructMaskBits,            // notify events sent to all intr_struct with set bits.                        
-    pub intr_release_mask: InterruptMaskBits,      // release event from configured channel triggers interrupt with set bits
-    pub intr_notify_mask: InterruptMaskBits,       // notify event from configured channel triggers interrupt with set bits  
+    pub release_mask: ChannelStructMaskBits,           // release events sent to all intr_struct with set bits.                      
+    pub notify_mask: ChannelStructMaskBits,            // notify events sent to all intr_struct with set bits.                        
+    pub intr_release_mask: InterruptMaskBits,            // release event from configured channel triggers interrupt with set bits
+    pub intr_notify_mask: InterruptMaskBits,             // notify event from configured channel triggers interrupt with set bits  
+}
+
+/// Callback functions are called and executed when a channel notify or release event is
+/// received.
+
+impl IpcChannelCallback for <Channels as IpcChannel>::pipe_ep0{
+    type DataType<C>;
+    pub fn release_callback<C>(
 }
 
 macro_rules! ipc{
@@ -156,7 +174,7 @@ macro_rules! ipc{
                 // If no interrupt is required clear all bits in release_intr_mask.
                 // #Safety - Single instruction read.
                 #[inline]
-                fn release_lock(self, release_intr_mask: InterruptStructMaskBits) ->Result<$C<Released>, Error> {
+                fn release_lock(&mut self, release_intr_mask: &ChannelStructMaskBits) ->Result<$C<Released>, Error> {
                     unsafe{(*IPC::PTR)
                                  .$structi
                                  .release
@@ -168,7 +186,7 @@ macro_rules! ipc{
                 // notify sends a notification to all the IPC Interrupt structures
                 // that have a set bit in notify_intr_mask.
                  #[inline(always)]
-                fn notify(&mut self, notify_intr_mask: InterruptStructMaskBits) ->() {
+                fn notify(&self, notify_intr_mask: &ChannelStructMaskBits) ->() {
                     unsafe{(*IPC::PTR)
                            .$structi
                            .notify
@@ -182,11 +200,15 @@ macro_rules! ipc{
                 /// configure_channel configures the channel release and notify channels,
                 /// and the interrupt structure interrupts and mask.
                 #[inline]
-                pub fn configure_channel(self, channel_config: ChannelConfig)-> Result<$C<Released>, Error>{
+                pub fn configure_channel(&mut self, channel_config: &ChannelConfig)-> Result<(), Error>{
                     let mut channel = self.acquire_lock()?; //.unwrap();
-                    channel.configure_channel_release_intr_structure(channel_config.intr_release_mask);
-                    channel.configure_channel_notify_intr_structure(channel_config.intr_notify_mask);
-                    channel.release_lock(InterruptStructMaskBits::none)
+                    //#Safety: Channel intr_structure access managed with acquiring and releasing lock.
+                    unsafe{
+                        channel.configure_channel_release_intr_structure(&channel_config.intr_release_mask);
+                        channel.configure_channel_notify_intr_structure(&channel_config.intr_notify_mask);
+                    }
+                    let _= channel.release_lock(&ChannelStructMaskBits::none)?;
+                    Ok(())
                 }
                 
                 /// acquire_lock attempts to acquire an IPC channel lock.
@@ -195,15 +217,15 @@ macro_rules! ipc{
                 /// acquire_lock will try upto 200 times to acquire the lock.
                 /// If a lock cannot be acquired an Error::ChannelBusy is returned.
                 #[inline]
-                fn acquire_lock(self) ->Result<$C<Acquired>, Error> {
+                fn acquire_lock(&mut self) ->Result<$C<Acquired>, Error> {
                     let mut count:u8 = 0;
-                    //#safety: single byte read from register.
+                    //#safety: single instruction read of register.
                     while unsafe{(*IPC::PTR)
                                  .$structi
                                  .acquire
                                  .read()
                                  .success()
-                                 //arbitrary timeout of 200 attempts.
+                               //arbitrary timeout of 200 attempts.
                                  .bit_is_clear() }&& count < 200{count += 1;}
                     if count < 200 {
                         Ok($C {
@@ -212,9 +234,9 @@ macro_rules! ipc{
                     }else{
                         Err(Error::ChannelBusy)
                     }
-                }
-               
+                }              
             }
+        
             impl $C<Acquired>{
                 // write_data_register writes directly to the IPC channel data register.
                 // Don't use this method directly use the HAL IPC functionality.
@@ -222,9 +244,10 @@ macro_rules! ipc{
                 // Input args are:
                 // - a byte of data.
                 // () is returned.
-                // #Safety - Safe locked single instruction write to IPC PTR.
+                // unsafe because no precondition testing to ensure synchornised access
+                // to data register.
                 #[inline(always)]
-                pub(crate) fn write_data_register(self, data: u32) -> (){
+                pub(crate) unsafe fn write_data_register(&self, data: u32) -> (){
                     unsafe{
                         (*IPC::PTR)
                             .$structi
@@ -236,9 +259,9 @@ macro_rules! ipc{
                 // data in the IPC channel data register.
                 // Do not use this method directly use one of the HAL
                 // IPC Channel methods.
-                // Safety: Deref of PAC pointer.
+                // Safety: Single instruction read.
                 #[inline(always)]
-                pub(crate) fn receive_data_register(self) -> u32{
+                pub(crate) fn receive_data_register(&self) -> u32{
                     unsafe{
                         (*IPC::PTR)
                             .$structi
@@ -253,8 +276,10 @@ macro_rules! ipc{
                 //channel.
                 //A notification will be sent to every structure with
                 //a set bit.
+                //#Safety: Unsafe due to no synchronisation on register.
+                //         Potential data race
                  #[inline(always)]
-                fn configure_channel_notify_intr_structure(&mut self, intr_structure_mask: InterruptMaskBits) ->() {
+                unsafe fn configure_channel_notify_intr_structure(&mut self, intr_structure_mask: &InterruptMaskBits) ->() {
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr_mask
@@ -265,9 +290,10 @@ macro_rules! ipc{
                 }
                 // configure_channel_release_intr_structure works similarly to
                 // configure_channel_notify_intr_structure.
+                //#Safety: Unsafe due to no synchronisation on register.
+                //         Potential data race
                  #[inline(always)]
-                fn configure_channel_release_intr_structure(&mut self, intr_structure_mask: InterruptMaskBits) ->() {
-                    needs thought about MaskBits naming.
+                unsafe fn configure_channel_release_intr_structure(&mut self, intr_structure_mask: &InterruptMaskBits) ->() {
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr_mask
@@ -279,8 +305,10 @@ macro_rules! ipc{
                 // clear_release_interrupts clears any release
                 // interrupts set for the associated IPC channel
                 // interrupt structure.
+                //#Safety: Unsafe due to no synchronisation on register.
+                //         Potential data race
                 #[inline(always)]
-                fn clear_release_interrupts(&mut self, release_mask: InterruptMaskBits)->(){
+                unsafe fn clear_release_interrupts(&mut self, release_mask: InterruptMaskBits)->(){
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr
@@ -291,8 +319,10 @@ macro_rules! ipc{
                 }
                 /// clear_notify_interrupts clears any notification interrupts set for the
                 /// associated IPC channel interrupt structure.
+                //#Safety: Unsafe due to no synchronisation on register.
+                //         Potential data race
                 #[inline(always)]
-                fn clear_notify_interrupts(&mut self, notify_mask: InterruptMaskBits)->(){
+                unsafe fn clear_notify_interrupts(&mut self, notify_mask: InterruptMaskBits)->(){
                     unsafe{(*IPC::PTR)
                            .$intr_structi
                            .intr
