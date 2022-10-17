@@ -1,6 +1,6 @@
 //! ipc/pipes.rs provides a pipe interface to the ipc module.
 
-use crate::pac::NVIC;
+extern crate heapless;
 use crate::drivers::ipc;
 use crate::drivers::ipc::{
     semaphore::Semaphore,
@@ -11,10 +11,9 @@ use crate::drivers::ipc::{
     IntrStructMaskBits,
     IntrStructs,
 };
-use crate::drivers::cpuss::{
-    nvic,
-    interrupt::InterruptSource,
-};
+use crate::drivers::cpuss::interrupt::InterruptSource;
+use crate::drivers::nvic::Nvic;
+ 
 pub enum Error {
     PipeOther(ipc::Error),
     PipeEndpointsNotDistinct,
@@ -32,6 +31,7 @@ pub struct Pipe {
 }
 
 impl Pipe {
+    pub const CLIENT_COUNT: u8 = 8;
     pub fn new() -> Pipe {
         Self {
             receive_ep: ChannelMaskBits::none,
@@ -78,7 +78,7 @@ impl Pipe {
     // - PipeEp0 uses interrupt structure intr_struct5
     // - PipeEp1 uses interrupt structure intr_struct6
     #[cfg(armv6m)]
-    pub fn configure_system_pipe_channels(self, channels: &mut Channels, intr_structs: IntrStructs, nvic: NVIC) -> Result<Pipe, Error> {
+    pub fn configure_system_pipe_channels(self, channels: &mut Channels, intr_structs: &mut IntrStructs, nvic: &mut Nvic) -> Result<Pipe, Error> {
         // PSOC-Creator config values:
         // EP0:
         // - IPC intr         0x0060_0000
@@ -119,10 +119,10 @@ impl Pipe {
         //set priority (==1)
         //set multiplexer.( == 1)
         //Only cpuss_interrupt0 for the cm0+
-        let nvic = nvic::new();
         nvic.configure_interrupt(InterruptSource::CPUSS_INTERRUPTS_IPC_0, 1); //priority 1 (second highest)
         
-        // Client count?
+        // Client count 8
+
         // Callback function for each client
         // One release callback function.
         Ok(Pipe {
@@ -148,4 +148,56 @@ impl Pipe {
     pub fn stop_system_pipes(&self) -> () {
         todo!()
     }
+}
+
+
+mod callback{
+    use heapless::Vec;
+    const CLIENT_COUNT: usize = 8;
+    pub enum CallbackClient{
+        SyscallCm0,
+        SyscallCm4,
+        SyscallDap,
+        Unused,
+        Semaphores,
+        Ep0,
+        Ep1,
+        Ddft,
+        Struct8,
+        Struct9,
+        Struct10,
+        Struct11,
+        Struct12,
+        Struct13,
+        Struct14,
+        Struct15,
+        NotOne,
+    }
+    struct Processor<CB>
+    where
+        CB: FnMut(),
+    {
+        callback: Vec<CB, CLIENT_COUNT>,
+    }
+
+    impl<CB> Processor<CB>
+    where
+        CB: FnMut(),
+    {
+        fn set_callback(&mut self, c: CB) {
+            self.callback.push(c);
+        }
+
+        fn process_events(&mut self, index: CallbackClient) {
+            (self.callback[index as usize])();
+        }
+    }
+
+    // fn main() {
+    //     let s = "world!".to_string();
+    //     let callback = || println!("hello {}", s);
+    //     let mut p = Processor { callback };
+    //     p.process_events();
+    // }
+
 }
