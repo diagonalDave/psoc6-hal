@@ -13,3 +13,4 @@ pub mod flashc;
 pub mod ipc;
 pub mod prot;
 pub mod system;
+pub mod nvic;

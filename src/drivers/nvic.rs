@@ -1,6 +1,6 @@
 //! drivers/nvic.rs provides access to the interrupt nvic
 //! functions from the PAC.
-use cortex_m::peripheral::NVIC;
+use crate::pac::NVIC;
 
 #[cfg(armv6m)]
 use crate::drivers::cpuss::interrupt::InterruptSource;
@@ -18,19 +18,24 @@ impl Nvic{
             nvic,
         }
     }
+    /// # Safety: Unsafe with:
+    ///  - mask based critical sections.
+    ///  otherwise safe.
+    #[inline]
+    pub unsafe fn enable_interrupt(&mut self, irqn: InterruptSource)-> (){
+       
+        //Configure NVIC for
+        NVIC::unmask(irqn);
+    }
+    #[inline]
+    pub fn disable_interrupt(&mut self, irqn: InterruptSource)->(){
+        NVIC::mask(irqn);
+    }
     #[cfg(armv6m)]
     #[inline]
-    pub unsafe fn configure_interrupt(&mut self, irqn: InterruptSource, priority:u8)-> (){
-        
-        // # Safety: Unsafe with:
-        //  - priority based critical sections.
-        //  - mask based critical sections.
-        //  otherwise safe.
-        //Configure NVIC for
+    pub fn configure_interrupt(&mut self, irqn: InterruptSource, priority:u8)-> (){
+         //Configure NVIC for
         self.nvic.set_priority(irqn, priority);
-        //enable interrupt using cortex_m
-        NVIC::unmask(irqn);
-
         //release any pending interrupts for source.
         self.clear_interrupt(irqn);
     }
@@ -47,15 +52,9 @@ impl Nvic{
     //  otherwise safe.
     #[cfg(armv7em)]
     #[inline]
-    pub unsafe fn configure_interrupt(&mut self, irqn: Interrupt, priority:u8)-> (){
-        
-        
-        
+    pub fn configure_interrupt(&mut self, irqn: Interrupt, priority:u8)-> (){
         //Configure NVIC for
         self.nvic.set_priority(irqn, priority);
-        //enable interrupt using cortex_m
-        NVIC::unmask(irqn);
-        
         //release any pending interrupts for source.
         self.clear_interrupt(irqn);
     }
