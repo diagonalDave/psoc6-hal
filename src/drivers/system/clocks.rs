@@ -345,9 +345,10 @@ impl System{
         self.srss.clk_fll_config3.modify(|_, w| unsafe{w.fll_lf_igain().bits(igain)});
         let pgain = fll_config.pgain as u8;
         self.srss.clk_fll_config3.modify(|_,w| unsafe{w.fll_lf_pgain().bits(pgain)});
-        self.srss.clk_fll_config3.modify(|_, w| unsafe{w.settling_count().bits(fll_config.settling_count)});
-
-        self.srss.clk_fll_config4.modify(|_,w| unsafe{w.cco_freq().bits(fll_config.cco_freq)});
+        let settling_count = fll_config.settling_count as u16;
+        self.srss.clk_fll_config3.modify(|_, w| unsafe{w.settling_count().bits(settling_count)});
+        let cco_freq = fll_config.cco_freq as u16;
+        self.srss.clk_fll_config4.modify(|_,w| unsafe{w.cco_freq().bits(cco_freq)});
 
     }
     

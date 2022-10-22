@@ -10,11 +10,12 @@ use crate::drivers::{
     system::System,
     cpuss::Cpuss,
     flashc::Flash,
-    ipc::{
-        IpcChannel,
-        Channels,
-        semaphore::Semaphore,
-    },
+    // ipc::{
+    //     IpcChannel,
+    //     Channels,
+    //     semaphore::Semaphore,
+    //     IntrStructs,
+    // },
     prot::Prot,
     backup::Backup,
 };
@@ -32,24 +33,25 @@ pub enum CpuMode{
 }
 
 pub struct Modes{
-    cm0p: CpuMode,
-    cm4: CpuMode,
-    system_mode: SystemMode,
+    pub cm0p: CpuMode,
+    pub cm4: CpuMode,
+    pub system_mode: SystemMode,
 }
 pub struct State{
-    semaphore: Semaphore,
+    //pub semaphore: Semaphore,
 }
 
 pub struct Psoc{
-    system: System,
-    cpuss: Cpuss,
-    flash: Flash,
-    pub ipc: Channels,
+    pub system: System,
+    pub cpuss: Cpuss,
+    pub flash: Flash,
+    // pub ipc: Channels,
+    // pub ipc_intr: IntrStructs,
     pub gpio: Parts,
-    prot: Prot,
-    modes: Modes,
-    backup: Backup,
-    state: State
+    pub prot: Prot,
+    pub modes: Modes,
+    pub backup: Backup,
+    pub state: State
 }
 
 impl Psoc{
@@ -57,11 +59,13 @@ impl Psoc{
     pub fn new() -> Psoc{
         let p = Peripherals::take().unwrap();
         let gpio =  p.GPIO.split();
+        //let (ipc, ipc_intr) = p.IPC.split();
         Psoc{
             system: System::from(p.SRSS),
             cpuss: Cpuss::from(p.CPUSS),
             flash: Flash::from(p.FLASHC),
-            ipc: p.IPC.split(),
+            // ipc,
+            // ipc_intr,
             gpio,
             prot: Prot::from(p.PROT),
             modes: Modes{
@@ -71,7 +75,7 @@ impl Psoc{
             },
             backup: Backup::from(p.BACKUP),
             state: State{
-                semaphore: Semaphore::new(),
+                //semaphore: Semaphore::new(),
             }
         }
     }

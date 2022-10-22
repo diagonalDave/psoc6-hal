@@ -5,11 +5,14 @@
 //! IPC are the BLE subsystem and the Flash subsystem
 //!
 
+#![allow(dead_code)]            // //TODO:Remove this once development of this file complete.
 use crate::pac::IPC;
 use core::marker::PhantomData;
 use bitflags::bitflags;
+
 pub mod semaphore;
-pub mod pipes;
+//pub mod pipes;
+
 pub trait IpcChannel {
     type Channels;
     type IntrStructs;
@@ -287,6 +290,7 @@ macro_rules! ipc{
                 pub fn new()-> $IS<Released>{
                     $IS{_intr_lock: PhantomData }
                 }
+                #[allow(unused_variables)]
                 fn release_lock(&mut self, release_intr_mask: &IntrStructMaskBits) -> Result<$IS<Released>, Error>{
                     todo!("Implement lock for intr_struct config.")
                 }

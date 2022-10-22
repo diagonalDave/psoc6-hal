@@ -44,7 +44,7 @@ pub enum ProtContext{
     Context15,
 }
 pub struct Prot {
-    prot: PROT,
+    pub prot: PROT,
 }
 
 pub enum Error{

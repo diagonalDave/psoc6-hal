@@ -7,7 +7,7 @@
 
 use crate::pac::CPUSS;
 
-pub mod nvic;
+
 pub mod cores;
 pub mod utility;
 pub mod interrupt;

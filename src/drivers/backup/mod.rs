@@ -35,7 +35,7 @@ impl Backup{
     /// TODO: needs full implementation.
     #[allow(unsafe_code)]
     #[inline(always)]
-    pub(crate) fn configure_backup_clock_source(&self)->(){
+    pub fn configure_backup_clock_source(&self)->(){
         self.backup.ctl.modify(|_,w| w.clk_sel().altbak());
 
     }
@@ -45,7 +45,7 @@ impl Backup{
     /// Implemented as described in trm pp 635-636
     #[allow(unsafe_code)]
     #[inline(always)]
-    pub(crate) fn enable_pmic(&self)->(){
+    pub fn enable_pmic(&self)->(){
         //Safety: 
         self.backup.pmic_ctl.modify(|_,w| unsafe{w.unlock().bits(0x3a)});
         self.backup.pmic_ctl.modify(|_,w| w.pmic_en_outen().set_bit());
@@ -56,7 +56,7 @@ impl Backup{
     /// Implemented as described in trm pp 635-636
     #[allow(unsafe_code)]
     #[inline(always)]
-    pub(crate) fn disable_pmic(&self)->(){
+    pub fn disable_pmic(&self)->(){
         //Safety: 
         self.backup.pmic_ctl.modify(|_,w| unsafe{w.unlock().bits(0x3a)});
         self.backup.pmic_ctl.modify(|_,w| w.pmic_en_outen().clear_bit());

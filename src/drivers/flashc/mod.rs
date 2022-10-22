@@ -17,7 +17,7 @@ impl Flash {
         Self { flash }
     }
     #[inline(always)]    
-   pub(crate)  fn configure_wait_states(&self, hf_clock_freq: u32, sys_mode: &SystemMode) -> () {
+   pub  fn configure_wait_states(&self, hf_clock_freq: u32, sys_mode: &SystemMode) -> () {
         let ws_main:u8;
         match sys_mode {
             SystemMode::Ulp => {
@@ -49,7 +49,7 @@ impl Flash {
     }
 
     #[inline(always)]
-    pub(crate) fn configure_ldo_mode(&self, sys_mode: &SystemMode)-> (){
+    pub fn configure_ldo_mode(&self, sys_mode: &SystemMode)-> (){
         match sys_mode{
             SystemMode::Ulp => {
                 //Set voltage for flash. vcc_sel 0 for LP mode 1 for ULP mode

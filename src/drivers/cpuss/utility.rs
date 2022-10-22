@@ -36,7 +36,7 @@ impl Cpuss{
     /// TODO: needs full implementation.
     #[allow(unsafe_code)]
     #[inline(always)]
-    pub(crate) fn configure_systick_source(&self)->(){
+    pub fn configure_systick_source(&self)->(){
         self.cpu_sys.systick_ctl.modify(|_, w| unsafe{w.clock_source().bits(0x00)}); // Sets the ilo as source.
     }
     

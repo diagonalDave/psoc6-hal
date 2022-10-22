@@ -2,11 +2,7 @@
 //! functions from the PAC.
 use crate::pac::NVIC;
 
-#[cfg(armv6m)]
 use crate::drivers::cpuss::interrupt::InterruptSource;
-
-#[cfg(armv7em)]
-use crate::pac::Interrupt;
 
 pub struct Nvic{
     nvic: NVIC,
@@ -31,39 +27,20 @@ impl Nvic{
     pub fn disable_interrupt(&mut self, irqn: InterruptSource)->(){
         NVIC::mask(irqn);
     }
-    #[cfg(armv6m)]
     #[inline]
-    pub fn configure_interrupt(&mut self, irqn: InterruptSource, priority:u8)-> (){
+     /// # Safety: Unsafe with:
+    ///  - priority based critical sections.
+    //  otherwise safe.
+    pub unsafe fn configure_interrupt(&mut self, irqn: InterruptSource, priority:u8)-> (){
          //Configure NVIC for
         self.nvic.set_priority(irqn, priority);
         //release any pending interrupts for source.
         self.clear_interrupt(irqn);
     }
-    #[cfg(armv6m)]
     #[inline]
     fn clear_interrupt(&self, irqn: InterruptSource) ->(){
         NVIC::unpend(irqn);
-    }
-
-    
-    /// # Safety: Unsafe with:
-    ///  - priority based critical sections.
-    ///  - mask based critical sections.
-    //  otherwise safe.
-    #[cfg(armv7em)]
-    #[inline]
-    pub fn configure_interrupt(&mut self, irqn: Interrupt, priority:u8)-> (){
-        //Configure NVIC for
-        self.nvic.set_priority(irqn, priority);
-        //release any pending interrupts for source.
-        self.clear_interrupt(irqn);
-    }
-    #[cfg(armv7em)]
-    #[inline]
-    pub fn clear_interrupt(&self, irqn: Interrupt) ->(){
-        NVIC::unpend(irqn);
-    }
-    
+    }    
 }
 impl core::convert:: From<NVIC> for Nvic{
     fn from(nvic: NVIC)->Self{

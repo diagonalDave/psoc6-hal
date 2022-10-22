@@ -6,13 +6,13 @@ use crate::drivers::ipc::{
     semaphore::Semaphore,
     ChannelConfig,
     ChannelMaskBits,
-    Channels,
+//    Channels,
     InterruptMaskBits,
     IntrStructMaskBits,
-    IntrStructs,
+//    IntrStructs,
 };
-use crate::drivers::cpuss::interrupt::InterruptSource;
-use crate::drivers::nvic::Nvic;
+// use crate::drivers::cpuss::interrupt::InterruptSource;
+//use crate::drivers::nvic::Nvic;
  
 pub enum Error {
     PipeOther(ipc::Error),
@@ -23,11 +23,11 @@ pub enum Error {
 }
 
 pub struct Pipe {
-    receive_ep: ChannelMaskBits,
-    receive_ep_config: ChannelConfig,
-    send_ep: ChannelMaskBits,
-    send_ep_config: ChannelConfig,
-    semaphore: Semaphore,
+    pub receive_ep: ChannelMaskBits,
+    pub receive_ep_config: ChannelConfig,
+    pub send_ep: ChannelMaskBits,
+    pub send_ep_config: ChannelConfig,
+    pub semaphore: Semaphore,
 }
 
 impl Pipe {
@@ -77,6 +77,9 @@ impl Pipe {
     // Each endpoint is configured to use the equivalently numbered intr_structx:
     // - PipeEp0 uses interrupt structure intr_struct5
     // - PipeEp1 uses interrupt structure intr_struct6
+    // # Safety: Unsafe with:
+    //  - priority based critical sections.
+    //  otherwise safe.
     #[cfg(armv6m)]
     pub fn configure_system_pipe_channels(self, channels: &mut Channels, intr_structs: &mut IntrStructs, nvic: &mut Nvic) -> Result<Pipe, Error> {
         // PSOC-Creator config values:
@@ -119,7 +122,9 @@ impl Pipe {
         //set priority (==1)
         //set multiplexer.( == 1)
         //Only cpuss_interrupt0 for the cm0+
-        nvic.configure_interrupt(InterruptSource::CPUSS_INTERRUPTS_IPC_0, 1); //priority 1 (second highest)
+        unsafe{
+            nvic.configure_interrupt(InterruptSource::CPUSS_INTERRUPTS_IPC_0, 1); //priority 1 (second highest)
+        }
         
         // Client count 8
 
@@ -184,8 +189,8 @@ mod callback{
     where
         CB: FnMut(),
     {
-        fn set_callback(&mut self, c: CB) {
-            self.callback.push(c);
+        fn set_callback(&mut self, _c: CB) {
+            //self.callback.push(c);
         }
 
         fn process_events(&mut self, index: CallbackClient) {
