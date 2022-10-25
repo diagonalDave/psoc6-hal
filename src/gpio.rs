@@ -38,6 +38,22 @@ pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
 
+pub enum EdgeSelect{
+    Disable,
+    Rising,
+    Falling,
+    Both,
+}
+pub enum FilterSelect{
+    Disable,
+    Rising,
+    Falling,
+}
+pub enum PinLevel{
+    Low = 0,
+    High = 1,
+}
+
 // `i` -> port number
 // `j` -> pin number
 macro_rules! gpio {
@@ -109,12 +125,15 @@ macro_rules! gpio {
                     $Pi_j { _mode: PhantomData }
                 }
                 pub fn into_pull_up_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullUp>> {
+                    
                     self.set_to_input();
+                    self.set_input_high_low(PinLevel::High);  //needed to activate pullup
                     self.set_drive_mode(2);
                     $Pi_j { _mode: PhantomData }
                 }
                 pub fn into_pull_down_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullDown>> {
                     self.set_to_input();
+                    self.set_input_high_low(PinLevel::Low);  //needed to activate pulldown
                     self.set_drive_mode(3);
                     $Pi_j { _mode: PhantomData }
                 }
@@ -137,6 +156,7 @@ macro_rules! gpio {
          
                 pub fn into_pull_up_down_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullUpDown>> {
                     self.set_to_input();
+                    self.set_input_high_low(PinLevel::High); // needed to activate ,pullup.
                     self.set_drive_mode(7);
                     $Pi_j { _mode: PhantomData }
                 }
@@ -144,7 +164,7 @@ macro_rules! gpio {
 
                 /// Set the drive mode for the pin
                 fn set_drive_mode(&self, bits: u8) {
-                    unsafe { (*GPIO::ptr()).$prti.cfg.modify(|_, w| {
+                    unsafe { (*GPIO::PTR).$prti.cfg.modify(|_, w| {
                         match $j {
                             0 => w.drive_mode0().bits(bits),
                             1 => w.drive_mode1().bits(bits),
@@ -159,7 +179,7 @@ macro_rules! gpio {
                     })}
                 }
                 fn set_to_input(&self) {
-                    unsafe{(*GPIO::ptr()).$prti.cfg.modify(|_, w| {
+                    unsafe{(*GPIO::PTR).$prti.cfg.modify(|_, w| {
                         match $j {
                             0 => w.in_en0().set_bit(),
                             1 => w.in_en1().set_bit(),
@@ -174,7 +194,7 @@ macro_rules! gpio {
                     })}
                 }
                 fn set_to_output(&self) {
-                    unsafe{(*GPIO::ptr()).$prti.cfg.modify(|_, w| {
+                    unsafe{(*GPIO::PTR).$prti.cfg.modify(|_, w| {
                         match $j {
                             0 => w.in_en0().clear_bit(),
                             1 => w.in_en1().clear_bit(),
@@ -188,18 +208,29 @@ macro_rules! gpio {
                         }
                     })}
                 }
+                fn set_input_high_low(&self, level: PinLevel){
+                    match level{
+                        PinLevel::Low =>  unsafe { (*GPIO::PTR).$prti.out_clr.write(|w| w.bits(1 << $j)) },
+                        PinLevel::High => unsafe { (*GPIO::PTR).$prti.out_set.write(|w| w.bits(1 << $j)) },
+                    }
+                }
+
+                pub fn configure_interrupts(&self, _filt_sel: FilterSelect,_edge_sell: EdgeSelect){
+                    todo!("Implement the fuck out of this thing.");
+                    
+                }
             }
 
             impl<MODE> OutputPin for $Pi_j<Output<MODE>> {
                 type Error = Infallible;
 
                 fn set_high(&mut self) -> Result<(), Self::Error> {
-                    unsafe { (*GPIO::ptr()).$prti.out_set.write(|w| w.bits(1 << $j)) };
+                    unsafe { (*GPIO::PTR).$prti.out_set.write(|w| w.bits(1 << $j)) };
                     Ok(())
                 }
 
                 fn set_low(&mut self) -> Result<(), Self::Error> {
-                    unsafe { (*GPIO::ptr()).$prti.out_clr.write(|w| w.bits(1 << $j)) };
+                    unsafe { (*GPIO::PTR).$prti.out_clr.write(|w| w.bits(1 << $j)) };
                     Ok(())
                 }
                 
@@ -207,14 +238,10 @@ macro_rules! gpio {
             impl<MODE> InputPin for $Pi_j<Input<MODE>>{
                 type Error = Infallible;
                 fn is_high(&self) -> Result<bool, Self::Error>{
-                    Ok(unsafe{ (*GPIO::ptr()).$prti.in_.read().$inx().bit_is_set()})
+                    Ok(unsafe{ (*GPIO::PTR).$prti.in_.read().$inx().bit_is_set()})
                 }
                 fn is_low(&self) -> Result<bool, Self::Error>{
-                    if self.is_high().unwrap(){
-                       Ok(false)
-                    }else{
-                        Ok(true)
-                    }
+                    Ok(unsafe{ (*GPIO::PTR).$prti.in_.read().$inx().bit_is_clear()})
                 }
             }
 
