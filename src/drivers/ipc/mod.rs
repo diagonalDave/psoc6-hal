@@ -30,16 +30,16 @@ pub trait IpcCallback{
     }
 }
 
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct Acquired;
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct Released;
 pub trait Lock {}
 impl Lock for Acquired {}
 impl Lock for Released {}
 
 
-#[derive(Debug)]
+//#[derive(Debug)]
 pub enum Error {
     AcquisitionFailed,
     ReleaseFailed,
@@ -49,7 +49,7 @@ pub enum Error {
 }
 
 bitflags! {
-    #[derive(Debug, Eq, PartialEq)]
+    //#[derive(Debug, Eq, PartialEq)]
     pub struct InterruptMaskBits:u32 {
         const cpuss_interrupt0 = (1 << 0); 
         const cpuss_interrupt1 = (1 << 1); 
@@ -71,7 +71,7 @@ bitflags! {
     }
 }
 bitflags! {
-    #[derive(Debug, Eq, PartialEq)]
+    //#[derive(Debug, Eq, PartialEq)]
     pub struct IntrStructMaskBits:u32 {
         const syscall1         = (1 << 0);
         const intr_struct1     = (1 << 1);
@@ -93,7 +93,7 @@ bitflags! {
     }
 }
 bitflags! {
-    #[derive(Debug, Eq, PartialEq)]
+    //#[derive(Debug, Eq, PartialEq)]
     pub struct ChannelMaskBits:u32 {
         const syscall_cm0 = (1 << 0);            // syscall_cm0
         const syscall_cm4 = (1 << 1);            // syscall_cm4
@@ -126,7 +126,7 @@ bitflags! {
 /// --intr_notify_mask: notify event from configured channel triggers interrupt with set bits
 /// Configure the channel notify and release masks to use zero or more particular Interrupt structure
 /// Configure the Interrupt structure release and notify masks to use zero or more particular interrupt.
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct ChannelConfig {
     pub release_mask: IntrStructMaskBits,           // release events sent to all intr_struct with set bits.                      
     pub notify_mask: IntrStructMaskBits,            // notify events sent to all intr_struct with set bits.                        
@@ -147,7 +147,7 @@ macro_rules! ipc{
     ]) => {
 
         //Create the channels
-        #[derive(Debug)]
+        //#[derive(Debug)]
         pub struct Channels{
             $(
                 //Channel
@@ -155,7 +155,7 @@ macro_rules! ipc{
             )+
         }
         //Create the IntrStructs
-        #[derive(Debug)]
+        //#[derive(Debug)]
         pub struct IntrStructs{
             $(
                 //IntrStruct
@@ -180,7 +180,7 @@ macro_rules! ipc{
         }
         $(
             ///Channel
-            #[derive(Debug)]
+            //#[derive(Debug)]
             pub struct $C<LOCK> {
                 _lock: PhantomData<LOCK>,
             }
@@ -282,7 +282,7 @@ macro_rules! ipc{
 
             /// Intr_struct
             #[allow(non_camel_case_types)]
-            #[derive(Debug)]
+            ////#[derive(Debug)]
             pub struct $IS<INTR_LOCK> {
                 _intr_lock: PhantomData<INTR_LOCK>,
             }

@@ -12,3 +12,5 @@ pub mod cpuss;
 pub mod flashc;
 pub mod prot;
 pub mod system;
+pub mod nvic;
+pub mod ipc;

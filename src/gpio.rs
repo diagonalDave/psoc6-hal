@@ -1,6 +1,7 @@
 //! General purpose input / output
 
 use core::marker::PhantomData;
+use cortex_m::interrupt::CriticalSection;
 
 /// Extension trait to split a GPIO peripheral in independent pins and
 /// registers.
@@ -21,6 +22,12 @@ pub struct HighZ;
 /// Strong output drive mode
 pub struct Strong;
 
+pub struct ResistivePullUp;
+pub struct ResistivePullDown;
+pub struct ResistivePullUpDown;
+pub struct OpenDrainDrivesHigh;
+pub struct OpenDrainDrivesLow;
+
 /// Input mode (type state)
 pub struct Input<MODE> {
     _mode: PhantomData<MODE>,
@@ -35,11 +42,11 @@ pub struct Output<MODE> {
 // `j` -> pin number
 macro_rules! gpio {
     ([
-     $($Pi_j:ident: ($pi_j:ident, $prti:ident, $j:expr, $MODE:ty)),+
+     $($Pi_j:ident: ($pi_j:ident, $prti:ident, $inx:ident, $j:expr, $MODE:ty)),+
     ]) => {
         use core::convert::Infallible;
 
-        use embedded_hal::digital::v2::OutputPin;
+        use embedded_hal::digital::v2::{OutputPin, InputPin};
         use psoc6_pac::GPIO;
 
         /// GPIO parts
@@ -68,12 +75,72 @@ macro_rules! gpio {
                 _mode: PhantomData<MODE>,
             }
 
-            impl<MODE> $Pi_j<MODE> {
+            impl<MODE> $Pi_j<MODE> {     
+                pub fn into_pull_up_output(self, _cs: &CriticalSection) -> $Pi_j<Output<ResistivePullUp>> {
+                    self.set_to_output();
+                    self.set_drive_mode(2);
+                    $Pi_j { _mode: PhantomData }
+                }
+                pub fn into_pull_down_output(self, _cs: &CriticalSection) -> $Pi_j<Output<ResistivePullDown>> {
+                    self.set_to_output();
+                    self.set_drive_mode(3);
+                    $Pi_j { _mode: PhantomData }
+                }
+                 pub fn into_open_drain_high_output(self, _cs: &CriticalSection) -> $Pi_j<Output<OpenDrainDrivesHigh>> {
+                    self.set_to_output();
+                    self.set_drive_mode(4);
+                    $Pi_j { _mode: PhantomData }
+                }
+                pub fn into_open_drain_low_output(self, _cs: &CriticalSection) -> $Pi_j<Output<OpenDrainDrivesLow>> {
+                    self.set_to_output();
+                    self.set_drive_mode(5);
+                    $Pi_j { _mode: PhantomData }
+                }
                 /// Configures the pin to operate as a strong output pin
-                pub fn into_strong_output(self) -> $Pi_j<Output<Strong>> {
+                pub fn into_strong_output(self, _cs: &CriticalSection) -> $Pi_j<Output<Strong>> {
+                    self.set_to_output();
                     self.set_drive_mode(6);
                     $Pi_j { _mode: PhantomData }
                 }
+         
+                pub fn into_pull_up_down_output(self, _cs: &CriticalSection) -> $Pi_j<Output<ResistivePullUpDown>> {
+                    self.set_to_output();
+                    self.set_drive_mode(7);
+                    $Pi_j { _mode: PhantomData }
+                }
+                pub fn into_pull_up_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullUp>> {
+                    self.set_to_input();
+                    self.set_drive_mode(2);
+                    $Pi_j { _mode: PhantomData }
+                }
+                pub fn into_pull_down_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullDown>> {
+                    self.set_to_input();
+                    self.set_drive_mode(3);
+                    $Pi_j { _mode: PhantomData }
+                }
+                 pub fn into_open_drain_high_input(self, _cs: &CriticalSection) -> $Pi_j<Input<OpenDrainDrivesHigh>> {
+                    self.set_to_input();
+                    self.set_drive_mode(4);
+                    $Pi_j { _mode: PhantomData }
+                }
+                pub fn into_open_drain_low_input(self, _cs: &CriticalSection) -> $Pi_j<Input<OpenDrainDrivesLow>> {
+                    self.set_to_input();
+                    self.set_drive_mode(5);
+                    $Pi_j { _mode: PhantomData }
+                }
+                /// Configures the pin to operate as a strong output pin
+                pub fn into_strong_input(self, _cs: &CriticalSection) -> $Pi_j<Input<Strong>> {
+                    self.set_to_input();
+                    self.set_drive_mode(6);
+                    $Pi_j { _mode: PhantomData }
+                }
+         
+                pub fn into_pull_up_down_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullUpDown>> {
+                    self.set_to_input();
+                    self.set_drive_mode(7);
+                    $Pi_j { _mode: PhantomData }
+                }
+                
 
                 /// Set the drive mode for the pin
                 fn set_drive_mode(&self, bits: u8) {
@@ -87,6 +154,36 @@ macro_rules! gpio {
                             5 => w.drive_mode5().bits(bits),
                             6 => w.drive_mode6().bits(bits),
                             7 => w.drive_mode7().bits(bits),
+                            _ => panic!(),
+                        }
+                    })}
+                }
+                fn set_to_input(&self) {
+                    unsafe{(*GPIO::ptr()).$prti.cfg.modify(|_, w| {
+                        match $j {
+                            0 => w.in_en0().set_bit(),
+                            1 => w.in_en1().set_bit(),
+                            2 => w.in_en2().set_bit(),
+                            3 => w.in_en3().set_bit(),
+                            4 => w.in_en4().set_bit(),
+                            5 => w.in_en5().set_bit(), 
+                            6 => w.in_en6().set_bit(),
+                            7 => w.in_en7().set_bit(),
+                            _ => panic!(),
+                        }
+                    })}
+                }
+                fn set_to_output(&self) {
+                    unsafe{(*GPIO::ptr()).$prti.cfg.modify(|_, w| {
+                        match $j {
+                            0 => w.in_en0().clear_bit(),
+                            1 => w.in_en1().clear_bit(),
+                            2 => w.in_en2().clear_bit(),
+                            3 => w.in_en3().clear_bit(),
+                            4 => w.in_en4().clear_bit(),
+                            5 => w.in_en5().clear_bit(), 
+                            6 => w.in_en6().clear_bit(),
+                            7 => w.in_en7().clear_bit(),
                             _ => panic!(),
                         }
                     })}
@@ -107,6 +204,19 @@ macro_rules! gpio {
                 }
                 
             }
+            impl<MODE> InputPin for $Pi_j<Input<MODE>>{
+                type Error = Infallible;
+                fn is_high(&self) -> Result<bool, Self::Error>{
+                    Ok(unsafe{ (*GPIO::ptr()).$prti.in_.read().$inx().bit_is_set()})
+                }
+                fn is_low(&self) -> Result<bool, Self::Error>{
+                    if self.is_high().unwrap(){
+                       Ok(false)
+                    }else{
+                        Ok(true)
+                    }
+                }
+            }
 
         )+
     };
@@ -116,98 +226,98 @@ macro_rules! gpio {
 
 
 gpio!([
-    P0_0: (p0_0, prt0, 0, Input<HighZ>),
-    P0_1: (p0_1, prt0, 1, Input<HighZ>),
-    P0_2: (p0_2, prt0, 2, Input<HighZ>),
-    P0_3: (p0_3, prt0, 3, Input<HighZ>),
-    P0_4: (p0_4, prt0, 4, Input<HighZ>),
-    P0_5: (p0_5, prt0, 5, Input<HighZ>),
+    P0_0: (p0_0, prt0, in0, 0, Input<HighZ>),
+    P0_1: (p0_1, prt0, in1, 1, Input<HighZ>),
+    P0_2: (p0_2, prt0, in2, 2, Input<HighZ>),
+    P0_3: (p0_3, prt0, in3, 3, Input<HighZ>),
+    P0_4: (p0_4, prt0, in4, 4, Input<HighZ>),
+    P0_5: (p0_5, prt0, in5, 5, Input<HighZ>),
 
-    P1_0: (p1_0, prt1, 0, Input<HighZ>),
-    P1_1: (p1_1, prt1, 1, Input<HighZ>),
-    P1_2: (p1_2, prt1, 2, Input<HighZ>),
-    P1_3: (p1_3, prt1, 3, Input<HighZ>),
-    P1_4: (p1_4, prt1, 4, Input<HighZ>),
-    P1_5: (p1_5, prt1, 5, Input<HighZ>),
+    P1_0: (p1_0, prt1, in0, 0, Input<HighZ>),
+    P1_1: (p1_1, prt1, in1, 1, Input<HighZ>),
+    P1_2: (p1_2, prt1, in2, 2, Input<HighZ>),
+    P1_3: (p1_3, prt1, in3, 3, Input<HighZ>),
+    P1_4: (p1_4, prt1, in4, 4, Input<HighZ>),
+    P1_5: (p1_5, prt1, in5, 5, Input<HighZ>),
 
-    P5_0: (p5_0, prt5, 0, Input<HighZ>),
-    P5_1: (p5_1, prt5, 1, Input<HighZ>),
-    P5_2: (p5_2, prt5, 2, Input<HighZ>),
-    P5_3: (p5_3, prt5, 3, Input<HighZ>),
-    P5_4: (p5_4, prt5, 4, Input<HighZ>),
-    P5_5: (p5_5, prt5, 5, Input<HighZ>),
-    P5_6: (p5_6, prt5, 6, Input<HighZ>),
-    P5_7: (p5_7, prt5, 7, Input<HighZ>),
+    P5_0: (p5_0, prt5, in0, 0, Input<HighZ>),
+    P5_1: (p5_1, prt5, in1, 1, Input<HighZ>),
+    P5_2: (p5_2, prt5, in2, 2, Input<HighZ>),
+    P5_3: (p5_3, prt5, in3, 3, Input<HighZ>),
+    P5_4: (p5_4, prt5, in4, 4, Input<HighZ>),
+    P5_5: (p5_5, prt5, in5, 5, Input<HighZ>),
+    P5_6: (p5_6, prt5, in6, 6, Input<HighZ>),
+    P5_7: (p5_7, prt5, in7, 7, Input<HighZ>),
 
-    P6_0: (p6_0, prt6, 0, Input<HighZ>),
-    P6_1: (p6_1, prt6, 1, Input<HighZ>),
-    P6_2: (p6_2, prt6, 2, Input<HighZ>),
-    P6_3: (p6_3, prt6, 3, Input<HighZ>),
-    P6_4: (p6_4, prt6, 4, Input<HighZ>),
-    P6_5: (p6_5, prt6, 5, Input<HighZ>),
-    P6_6: (p6_6, prt6, 6, Input<HighZ>),
-    P6_7: (p6_7, prt6, 7, Input<HighZ>),
+    P6_0: (p6_0, prt6, in0, 0, Input<HighZ>),
+    P6_1: (p6_1, prt6, in1, 1, Input<HighZ>),
+    P6_2: (p6_2, prt6, in2, 2, Input<HighZ>),
+    P6_3: (p6_3, prt6, in3, 3, Input<HighZ>),
+    P6_4: (p6_4, prt6, in4, 4, Input<HighZ>),
+    P6_5: (p6_5, prt6, in5, 5, Input<HighZ>),
+    P6_6: (p6_6, prt6, in6, 6, Input<HighZ>),
+    P6_7: (p6_7, prt6, in7, 7, Input<HighZ>),
 
-    P7_0: (p7_0, prt7, 0, Input<HighZ>),
-    P7_1: (p7_1, prt7, 1, Input<HighZ>),
-    P7_2: (p7_2, prt7, 2, Input<HighZ>),
-    P7_3: (p7_3, prt7, 3, Input<HighZ>),
-    P7_4: (p7_4, prt7, 4, Input<HighZ>),
-    P7_5: (p7_5, prt7, 5, Input<HighZ>),
-    P7_6: (p7_6, prt7, 6, Input<HighZ>),
-    P7_7: (p7_7, prt7, 7, Input<HighZ>),
+    P7_0: (p7_0, prt7, in0, 0, Input<HighZ>),
+    P7_1: (p7_1, prt7, in1, 1, Input<HighZ>),
+    P7_2: (p7_2, prt7, in2, 2, Input<HighZ>),
+    P7_3: (p7_3, prt7, in3, 3, Input<HighZ>),
+    P7_4: (p7_4, prt7, in4, 4, Input<HighZ>),
+    P7_5: (p7_5, prt7, in5, 5, Input<HighZ>),
+    P7_6: (p7_6, prt7, in6, 6, Input<HighZ>),
+    P7_7: (p7_7, prt7, in7, 7, Input<HighZ>),
 
-    P8_0: (p8_0, prt8, 0, Input<HighZ>),
-    P8_1: (p8_1, prt8, 1, Input<HighZ>),
-    P8_2: (p8_2, prt8, 2, Input<HighZ>),
-    P8_3: (p8_3, prt8, 3, Input<HighZ>),
-    P8_4: (p8_4, prt8, 4, Input<HighZ>),
-    P8_5: (p8_5, prt8, 5, Input<HighZ>),
-    P8_6: (p8_6, prt8, 6, Input<HighZ>),
-    P8_7: (p8_7, prt8, 7, Input<HighZ>),
+    P8_0: (p8_0, prt8, in0, 0, Input<HighZ>),
+    P8_1: (p8_1, prt8, in1, 1, Input<HighZ>),
+    P8_2: (p8_2, prt8, in2, 2, Input<HighZ>),
+    P8_3: (p8_3, prt8, in3, 3, Input<HighZ>),
+    P8_4: (p8_4, prt8, in4, 4, Input<HighZ>),
+    P8_5: (p8_5, prt8, in5, 5, Input<HighZ>),
+    P8_6: (p8_6, prt8, in6, 6, Input<HighZ>),
+    P8_7: (p8_7, prt8, in7, 7, Input<HighZ>),
 
-    P9_0: (p9_0, prt9, 0, Input<HighZ>),
-    P9_1: (p9_1, prt9, 1, Input<HighZ>),
-    P9_2: (p9_2, prt9, 2, Input<HighZ>),
-    P9_3: (p9_3, prt9, 3, Input<HighZ>),
-    P9_4: (p9_4, prt9, 4, Input<HighZ>),
-    P9_5: (p9_5, prt9, 5, Input<HighZ>),
-    P9_6: (p9_6, prt9, 6, Input<HighZ>),
-    P9_7: (p9_7, prt9, 7, Input<HighZ>),
+    P9_0: (p9_0, prt9, in0, 0, Input<HighZ>),
+    P9_1: (p9_1, prt9, in1, 1, Input<HighZ>),
+    P9_2: (p9_2, prt9, in2, 2, Input<HighZ>),
+    P9_3: (p9_3, prt9, in3, 3, Input<HighZ>),
+    P9_4: (p9_4, prt9, in4, 4, Input<HighZ>),
+    P9_5: (p9_5, prt9, in5, 5, Input<HighZ>),
+    P9_6: (p9_6, prt9, in6, 6, Input<HighZ>),
+    P9_7: (p9_7, prt9, in7, 7, Input<HighZ>),
 
-    P10_0: (p10_0, prt10, 0, Input<HighZ>),
-    P10_1: (p10_1, prt10, 1, Input<HighZ>),
-    P10_2: (p10_2, prt10, 2, Input<HighZ>),
-    P10_3: (p10_3, prt10, 3, Input<HighZ>),
-    P10_4: (p10_4, prt10, 4, Input<HighZ>),
-    P10_5: (p10_5, prt10, 5, Input<HighZ>),
-    P10_6: (p10_6, prt10, 6, Input<HighZ>),
-    P10_7: (p10_7, prt10, 7, Input<HighZ>),
+    P10_0: (p10_0, prt10, in0, 0, Input<HighZ>),
+    P10_1: (p10_1, prt10, in1, 1, Input<HighZ>),
+    P10_2: (p10_2, prt10, in2, 2, Input<HighZ>),
+    P10_3: (p10_3, prt10, in3, 3, Input<HighZ>),
+    P10_4: (p10_4, prt10, in4, 4, Input<HighZ>),
+    P10_5: (p10_5, prt10, in5, 5, Input<HighZ>),
+    P10_6: (p10_6, prt10, in6, 6, Input<HighZ>),
+    P10_7: (p10_7, prt10, in7, 7, Input<HighZ>),
 
-    P11_0: (p11_0, prt11, 0, Input<HighZ>),
-    P11_1: (p11_1, prt11, 1, Input<HighZ>),
-    P11_2: (p11_2, prt11, 2, Input<HighZ>),
-    P11_3: (p11_3, prt11, 3, Input<HighZ>),
-    P11_4: (p11_4, prt11, 4, Input<HighZ>),
-    P11_5: (p11_5, prt11, 5, Input<HighZ>),
-    P11_6: (p11_6, prt11, 6, Input<HighZ>),
-    P11_7: (p11_7, prt11, 7, Input<HighZ>),
+    P11_0: (p11_0, prt11, in0, 0, Input<HighZ>),
+    P11_1: (p11_1, prt11, in1, 1, Input<HighZ>),
+    P11_2: (p11_2, prt11, in2, 2, Input<HighZ>),
+    P11_3: (p11_3, prt11, in3, 3, Input<HighZ>),
+    P11_4: (p11_4, prt11, in4, 4, Input<HighZ>),
+    P11_5: (p11_5, prt11, in5, 5, Input<HighZ>),
+    P11_6: (p11_6, prt11, in6, 6, Input<HighZ>),
+    P11_7: (p11_7, prt11, in7, 7, Input<HighZ>),
 
-    P12_0: (p12_0, prt12, 0, Input<HighZ>),
-    P12_1: (p12_1, prt12, 1, Input<HighZ>),
-    P12_2: (p12_2, prt12, 2, Input<HighZ>),
-    P12_3: (p12_3, prt12, 3, Input<HighZ>),
-    P12_4: (p12_4, prt12, 4, Input<HighZ>),
-    P12_5: (p12_5, prt12, 5, Input<HighZ>),
-    P12_6: (p12_6, prt12, 6, Input<HighZ>),
-    P12_7: (p12_7, prt12, 7, Input<HighZ>),
+    P12_0: (p12_0, prt12, in0, 0, Input<HighZ>),
+    P12_1: (p12_1, prt12, in1, 1, Input<HighZ>),
+    P12_2: (p12_2, prt12, in2, 2, Input<HighZ>),
+    P12_3: (p12_3, prt12, in3, 3, Input<HighZ>),
+    P12_4: (p12_4, prt12, in4, 4, Input<HighZ>),
+    P12_5: (p12_5, prt12, in5, 5, Input<HighZ>),
+    P12_6: (p12_6, prt12, in6, 6, Input<HighZ>),
+    P12_7: (p12_7, prt12, in7, 7, Input<HighZ>),
 
-    P13_0: (p13_0, prt13, 0, Input<HighZ>),
-    P13_1: (p13_1, prt13, 1, Input<HighZ>),
-    P13_2: (p13_2, prt13, 2, Input<HighZ>),
-    P13_3: (p13_3, prt13, 3, Input<HighZ>),
-    P13_4: (p13_4, prt13, 4, Input<HighZ>),
-    P13_5: (p13_5, prt13, 5, Input<HighZ>),
-    P13_6: (p13_6, prt13, 6, Input<HighZ>),
-    P13_7: (p13_7, prt13, 7, Input<HighZ>)
+    P13_0: (p13_0, prt13, in0, 0, Input<HighZ>),
+    P13_1: (p13_1, prt13, in1, 1, Input<HighZ>),
+    P13_2: (p13_2, prt13, in2, 2, Input<HighZ>),
+    P13_3: (p13_3, prt13, in3, 3, Input<HighZ>),
+    P13_4: (p13_4, prt13, in4, 4, Input<HighZ>),
+    P13_5: (p13_5, prt13, in5, 5, Input<HighZ>),
+    P13_6: (p13_6, prt13, in6, 6, Input<HighZ>),
+    P13_7: (p13_7, prt13, in7, 7, Input<HighZ>)
 ]);
