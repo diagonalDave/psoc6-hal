@@ -10,48 +10,36 @@
 //! - Trigger Multiplexer -- trigger_mux
 //! - Profiler -- profiler
 
-pub use reset_cause::ResetCause;
-pub use clocks::{Clocks,
-                 RootClocks,
-                 Divider,
-                 PathSource,
-                 ClockPath,
-                 SelectChannelNumber,
-                 DsiMux,
-                 Error,
-                 FllConfig,
-                 FllOutputDiv,
-                 FllGain,
-                 FllCco,
+pub use clocks::{
+    ClockPath, Clocks, Divider, DsiMux, Error, FllCco, FllConfig, FllGain, FllOutputDiv,
+    PathSource, RootClocks, SelectChannelNumber,
 };
+pub use reset_cause::ResetCause;
 
 use crate::pac::SRSS;
 
-pub mod watchdog;
-pub mod reset_cause;
 pub mod clocks;
-pub mod power_sam;
 pub mod interrupts;
+pub mod power_sam;
+pub mod reset_cause;
+pub mod watchdog;
 
-pub struct System{
+pub struct System {
     pub srss: SRSS,
 }
 
-impl System{
-    fn new(srss: SRSS) -> System{
-        System{
-            srss,
-        }
+impl System {
+    fn new(srss: SRSS) -> System {
+        System { srss }
     }
     #[allow(dead_code)]
-    fn free(self) -> SRSS{
+    fn free(self) -> SRSS {
         self.srss
     }
 }
 
-impl core::convert::From<SRSS> for System{
-    fn from(srss: SRSS) -> System{
+impl core::convert::From<SRSS> for System {
+    fn from(srss: SRSS) -> System {
         System::new(srss)
     }
 }
-

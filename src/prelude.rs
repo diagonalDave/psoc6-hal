@@ -5,4 +5,3 @@ pub use embedded_hal::digital::v2::ToggleableOutputPin as _embedded_hal_digital_
 pub use embedded_hal::prelude::*;
 
 pub use crate::gpio::GpioExt as _psoc6_hal_gpio_GpioExt;
-

@@ -26,14 +26,13 @@
 
 use core::marker::PhantomData;
 
-
-pub struct Semaphore{
+pub struct Semaphore {
     flags: u128,
 }
 
 pub struct SemaphoreFlag<FLAG> {
     _flag: PhantomData<FLAG>,
-    flag: u32,
+    pub flag: u32,
 }
 pub enum Error {
     FlagUnknown,
@@ -54,15 +53,11 @@ pub trait Core {}
 impl Core for Cm0 {}
 impl Core for Cm4 {}
 
-
-
 impl Semaphore {
     pub fn new() -> Semaphore {
         //create IPC channel
 
-        Self {
-            flags: 0u128,
-        }
+        Self { flags: 0u128 }
     }
     pub fn set(&mut self, flag_number: u32) -> Result<SemaphoreFlag<Set>, Error> {
         //Acquire the Semaphore channel
@@ -73,13 +68,13 @@ impl Semaphore {
     }
     pub fn notify_set(&mut self) -> Result<SemaphoreFlag<Set>, Error> {
         // Read the Semaphore sent data.
-        let flag = 0xffff_ffff;    //sent_data;
-        // Release the Semaphore channel.
-        // Update local copy
-        //Return a Set semaphore flag.
+        let flag = 0xffff_ffff; //sent_data;
+                                // Release the Semaphore channel.
+                                // Update local copy
+                                //Return a Set semaphore flag.
         self.set_local(flag)
     }
-    
+
     pub fn clear(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear> {
         //Acquire the Semaphore channel
         //Send the semaphoreFlag as data.
@@ -87,7 +82,7 @@ impl Semaphore {
         //clear the flag
         self.clear_local(flag)
     }
-    pub fn notify_clear(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear>{
+    pub fn notify_clear(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear> {
         //Read the Semaphore data
         // Release the Semaphore channel
         // Update the local Semaphore copy.
@@ -95,7 +90,7 @@ impl Semaphore {
         self.clear_local(flag)
     }
 
-    fn clear_local(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear>{
+    fn clear_local(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear> {
         self.flags &= !(1 << flag.flag);
         //create a clear semaphoreFlag.
         SemaphoreFlag {
@@ -104,8 +99,8 @@ impl Semaphore {
         }
     }
 
-    fn set_local(&mut self, flag_number:u32) -> Result<SemaphoreFlag<Set>, Error>{
-                if flag_number < 127 {
+    fn set_local(&mut self, flag_number: u32) -> Result<SemaphoreFlag<Set>, Error> {
+        if flag_number < 127 {
             if self.flags & (1 << flag_number) != 0 {
                 Err(Error::FlagLocked)
             } else {
@@ -118,8 +113,5 @@ impl Semaphore {
         } else {
             Err(Error::FlagUnknown)
         }
-
     }
-    
 }
-

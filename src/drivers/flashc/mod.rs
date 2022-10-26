@@ -4,9 +4,8 @@
 //! - Rom configuration -- rom module
 //! - Status, Identity and power control -- utility module
 
-use crate::psoc::SystemMode;
 use crate::pac::FLASHC;
-
+use crate::psoc::SystemMode;
 
 pub struct Flash {
     pub flash: FLASHC,
@@ -16,9 +15,9 @@ impl Flash {
     fn new(flash: FLASHC) -> Self {
         Self { flash }
     }
-    #[inline(always)]    
-   pub  fn configure_wait_states(&self, hf_clock_freq: u32, sys_mode: &SystemMode) -> () {
-        let ws_main:u8;
+    #[inline(always)]
+    pub fn configure_wait_states(&self, hf_clock_freq: u32, sys_mode: &SystemMode) -> () {
+        let ws_main: u8;
         match sys_mode {
             SystemMode::Ulp => {
                 if hf_clock_freq > 33_000_000 {
@@ -49,16 +48,22 @@ impl Flash {
     }
 
     #[inline(always)]
-    pub fn configure_ldo_mode(&self, sys_mode: &SystemMode)-> (){
-        match sys_mode{
+    pub fn configure_ldo_mode(&self, sys_mode: &SystemMode) -> () {
+        match sys_mode {
             SystemMode::Ulp => {
                 //Set voltage for flash. vcc_sel 0 for LP mode 1 for ULP mode
-                self.flash.fm_ctl.ana_ctl0.modify(|_,w| w.vcc_sel().set_bit())
-            },
+                self.flash
+                    .fm_ctl
+                    .ana_ctl0
+                    .modify(|_, w| w.vcc_sel().set_bit())
+            }
             SystemMode::Lp => {
-                 //Set voltage for flash. vcc_sel 0 for LP mode 1 for ULP mode
-                 self.flash.fm_ctl.ana_ctl0.modify(|_,w| w.vcc_sel().clear_bit());
-            },
+                //Set voltage for flash. vcc_sel 0 for LP mode 1 for ULP mode
+                self.flash
+                    .fm_ctl
+                    .ana_ctl0
+                    .modify(|_, w| w.vcc_sel().clear_bit());
+            }
             _ => {}
         }
     }

@@ -6,11 +6,10 @@
 //! and expose associated functionality. Some knowledge of the underlying
 //! register structure is required to use these drivers.
 
-
 pub mod backup;
 pub mod cpuss;
 pub mod flashc;
+pub mod ipc;
+pub mod nvic;
 pub mod prot;
 pub mod system;
-pub mod nvic;
-pub mod ipc;

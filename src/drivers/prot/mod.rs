@@ -15,17 +15,17 @@ use crate::pac::PROT;
 
 /// ProtBusMaster identify all the bus masters using the
 /// shared memory protection unit (SMPU)
-pub enum ProtBusMaster{
+pub enum ProtBusMaster {
     IdCm0,
     IdCrypto,
     IdDw0,
     IdDw1,
     IdCm4,
-    IdTc ,
+    IdTc,
 }
 /// ProtContext restricts the protection contexts to the
 /// available range.
-pub enum ProtContext{
+pub enum ProtContext {
     NoContext,
     Context1,
     Context2,
@@ -47,7 +47,7 @@ pub struct Prot {
     pub prot: PROT,
 }
 
-pub enum Error{
+pub enum Error {
     UnknownContext,
 }
 
@@ -56,11 +56,11 @@ impl Prot {
         Self { prot }
     }
     #[inline]
-    pub fn from(prot: PROT)->Self{
+    pub fn from(prot: PROT) -> Self {
         Self::new(prot)
     }
     #[inline]
-    pub fn read_active_context(&self, master: ProtBusMaster) -> ProtContext{
+    pub fn read_active_context(&self, master: ProtBusMaster) -> ProtContext {
         //TODO::Not sure how all this works so will leave for startup.
         let _ = master;
         // //let index = Prot::bus_master_to_index(master);
@@ -72,7 +72,7 @@ impl Prot {
         //     IdCm4 => self.prot.mpu14,
         //     IdTc => self.prot.mpu15,
         // };
-        
+
         // match mpux.ms_ctl.read().pc().bits(){
         //     0x00 => Ok(ProtContext::NoContext),
         //     0x01 => Ok(ProtContext::Context1),
@@ -96,8 +96,8 @@ impl Prot {
     }
     #[allow(dead_code)]
     #[inline]
-    fn bus_master_to_index(bus_master: ProtBusMaster)-> u8{
-        match bus_master{
+    fn bus_master_to_index(bus_master: ProtBusMaster) -> u8 {
+        match bus_master {
             ProtBusMaster::IdCm0 => 0,
             ProtBusMaster::IdCrypto => 1,
             ProtBusMaster::IdDw0 => 2,
@@ -107,4 +107,3 @@ impl Prot {
         }
     }
 }
-

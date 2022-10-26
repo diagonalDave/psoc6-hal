@@ -38,18 +38,18 @@ pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
 
-pub enum EdgeSelect{
+pub enum EdgeSelect {
     Disable,
     Rising,
     Falling,
     Both,
 }
-pub enum FilterSelect{
+pub enum FilterSelect {
     Disable,
     Rising,
     Falling,
 }
-pub enum PinLevel{
+pub enum PinLevel {
     Low = 0,
     High = 1,
 }
@@ -91,7 +91,7 @@ macro_rules! gpio {
                 _mode: PhantomData<MODE>,
             }
 
-            impl<MODE> $Pi_j<MODE> {     
+            impl<MODE> $Pi_j<MODE> {
                 pub fn into_pull_up_output(self, _cs: &CriticalSection) -> $Pi_j<Output<ResistivePullUp>> {
                     self.set_to_output();
                     self.set_drive_mode(2);
@@ -118,14 +118,14 @@ macro_rules! gpio {
                     self.set_drive_mode(6);
                     $Pi_j { _mode: PhantomData }
                 }
-         
+
                 pub fn into_pull_up_down_output(self, _cs: &CriticalSection) -> $Pi_j<Output<ResistivePullUpDown>> {
                     self.set_to_output();
                     self.set_drive_mode(7);
                     $Pi_j { _mode: PhantomData }
                 }
                 pub fn into_pull_up_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullUp>> {
-                    
+
                     self.set_to_input();
                     self.set_input_high_low(PinLevel::High);  //needed to activate pullup
                     self.set_drive_mode(2);
@@ -153,14 +153,14 @@ macro_rules! gpio {
                     self.set_drive_mode(6);
                     $Pi_j { _mode: PhantomData }
                 }
-         
+
                 pub fn into_pull_up_down_input(self, _cs: &CriticalSection) -> $Pi_j<Input<ResistivePullUpDown>> {
                     self.set_to_input();
                     self.set_input_high_low(PinLevel::High); // needed to activate ,pullup.
                     self.set_drive_mode(7);
                     $Pi_j { _mode: PhantomData }
                 }
-                
+
 
                 /// Set the drive mode for the pin
                 fn set_drive_mode(&self, bits: u8) {
@@ -186,7 +186,7 @@ macro_rules! gpio {
                             2 => w.in_en2().set_bit(),
                             3 => w.in_en3().set_bit(),
                             4 => w.in_en4().set_bit(),
-                            5 => w.in_en5().set_bit(), 
+                            5 => w.in_en5().set_bit(),
                             6 => w.in_en6().set_bit(),
                             7 => w.in_en7().set_bit(),
                             _ => panic!(),
@@ -201,7 +201,7 @@ macro_rules! gpio {
                             2 => w.in_en2().clear_bit(),
                             3 => w.in_en3().clear_bit(),
                             4 => w.in_en4().clear_bit(),
-                            5 => w.in_en5().clear_bit(), 
+                            5 => w.in_en5().clear_bit(),
                             6 => w.in_en6().clear_bit(),
                             7 => w.in_en7().clear_bit(),
                             _ => panic!(),
@@ -217,7 +217,7 @@ macro_rules! gpio {
 
                 pub fn configure_interrupts(&self, _filt_sel: FilterSelect,_edge_sell: EdgeSelect){
                     todo!("Implement the fuck out of this thing.");
-                    
+
                 }
             }
 
@@ -233,7 +233,7 @@ macro_rules! gpio {
                     unsafe { (*GPIO::PTR).$prti.out_clr.write(|w| w.bits(1 << $j)) };
                     Ok(())
                 }
-                
+
             }
             impl<MODE> InputPin for $Pi_j<Input<MODE>>{
                 type Error = Infallible;
@@ -247,10 +247,8 @@ macro_rules! gpio {
 
         )+
     };
-    
+
 }
-
-
 
 gpio!([
     P0_0: (p0_0, prt0, in0, 0, Input<HighZ>),

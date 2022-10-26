@@ -1,9 +1,9 @@
 //! Delays
 
+use crate::ehal::blocking::delay::{DelayMs, DelayUs};
 use cast::u32;
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m::peripheral::SYST;
-use crate::ehal::blocking::delay::{DelayMs, DelayUs};
 
 // TODO: Verify this value.
 const FREQ: u32 = 150_000_000;

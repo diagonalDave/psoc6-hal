@@ -12,48 +12,143 @@ use crate::drivers::cpuss::Cpuss;
 #[cfg(armv6m)]
 use crate::pac::Interrupt;
 
-impl Cpuss{
+impl Cpuss {
     #[allow(non_snake_case)]
     #[cfg(armv6m)]
-    pub fn configure_interrupt_mux(&self, intr_source: InterruptSource,  irqn: Interrupt) ->(){
+    pub fn configure_interrupt_mux(&self, intr_source: InterruptSource, irqn: Interrupt) -> () {
         // Find correct int_ctl register. There are 4 irqn per ctl register.
-        match irqn  {
-           Interrupt::NVIC_MUX0_IRQn => self.cpu_sys.cm0_int_ctl0.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX1_IRQn => self.cpu_sys.cm0_int_ctl0.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX2_IRQn => self.cpu_sys.cm0_int_ctl0.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX3_IRQn => self.cpu_sys.cm0_int_ctl0.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX4_IRQn => self.cpu_sys.cm0_int_ctl1.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX5_IRQn => self.cpu_sys.cm0_int_ctl1.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX6_IRQn => self.cpu_sys.cm0_int_ctl1.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX7_IRQn => self.cpu_sys.cm0_int_ctl1.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX8_IRQn  => self.cpu_sys.cm0_int_ctl2.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX9_IRQn  => self.cpu_sys.cm0_int_ctl2.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX10_IRQn => self.cpu_sys.cm0_int_ctl2.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX11_IRQn => self.cpu_sys.cm0_int_ctl2.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX12_IRQn => self.cpu_sys.cm0_int_ctl3.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX13_IRQn => self.cpu_sys.cm0_int_ctl3.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX14_IRQn => self.cpu_sys.cm0_int_ctl3.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX15_IRQn => self.cpu_sys.cm0_int_ctl3.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX16_IRQn => self.cpu_sys.cm0_int_ctl4.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX17_IRQn => self.cpu_sys.cm0_int_ctl4.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX18_IRQn => self.cpu_sys.cm0_int_ctl4.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX19_IRQn => self.cpu_sys.cm0_int_ctl4.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX20_IRQn => self.cpu_sys.cm0_int_ctl5.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX21_IRQn => self.cpu_sys.cm0_int_ctl5.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX22_IRQn => self.cpu_sys.cm0_int_ctl5.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX23_IRQn => self.cpu_sys.cm0_int_ctl5.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX24_IRQn => self.cpu_sys.cm0_int_ctl6.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX25_IRQn => self.cpu_sys.cm0_int_ctl6.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX26_IRQn => self.cpu_sys.cm0_int_ctl6.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX27_IRQn => self.cpu_sys.cm0_int_ctl6.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX28_IRQn => self.cpu_sys.cm0_int_ctl7.modify(|_, w| unsafe{w.mux0_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX29_IRQn => self.cpu_sys.cm0_int_ctl7.modify(|_, w| unsafe{w.mux1_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX30_IRQn => self.cpu_sys.cm0_int_ctl7.modify(|_, w| unsafe{w.mux2_sel().bits(intr_source as u8)}),
-           Interrupt::NVIC_MUX31_IRQn => self.cpu_sys.cm0_int_ctl7.modify(|_, w| unsafe{w.mux3_sel().bits(intr_source as u8)}),
+        match irqn {
+            Interrupt::NVIC_MUX0_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl0
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX1_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl0
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX2_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl0
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX3_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl0
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX4_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl1
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX5_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl1
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX6_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl1
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX7_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl1
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX8_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl2
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX9_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl2
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX10_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl2
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX11_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl2
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX12_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl3
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX13_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl3
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX14_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl3
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX15_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl3
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX16_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl4
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX17_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl4
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX18_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl4
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX19_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl4
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX20_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl5
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX21_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl5
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX22_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl5
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX23_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl5
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX24_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl6
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX25_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl6
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX26_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl6
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX27_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl6
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX28_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl7
+                .modify(|_, w| unsafe { w.mux0_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX29_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl7
+                .modify(|_, w| unsafe { w.mux1_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX30_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl7
+                .modify(|_, w| unsafe { w.mux2_sel().bits(intr_source as u8) }),
+            Interrupt::NVIC_MUX31_IRQn => self
+                .cpu_sys
+                .cm0_int_ctl7
+                .modify(|_, w| unsafe { w.mux3_sel().bits(intr_source as u8) }),
         }
     }
-    
-} 
+}
 
 /// PsocInterrupts represents all the available interrupts on a Psoc6 device.
 /// It is a copy of the pac::Interrupts (for the CM4).
@@ -63,7 +158,7 @@ impl Cpuss{
 //#[cfg(armv6m)]
 #[derive(Copy, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
-pub enum InterruptSource{
+pub enum InterruptSource {
     #[doc = "0 - GPIO Port Interrupt #0"]
     IOSS_INTERRUPTS_GPIO_0 = 0,
     #[doc = "1 - GPIO Port Interrupt #1"]
@@ -366,4 +461,3 @@ unsafe impl cortex_m::interrupt::InterruptNumber for InterruptSource {
         self as u16
     }
 }
-

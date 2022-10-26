@@ -4,7 +4,7 @@
 use crate::drivers::system::System;
 
 #[derive(PartialEq)]
-pub enum ResetCause{
+pub enum ResetCause {
     ActiveFault,
     LostWatchCrystalClock,
     DeepSleepFault,
@@ -19,10 +19,10 @@ pub enum ResetCause{
     NoReset,
 }
 
-impl System{
+impl System {
     #[inline(always)]
-    pub fn last_reset(&self)->ResetCause{
-        let mut result = match self.srss.res_cause.read().bits(){
+    pub fn last_reset(&self) -> ResetCause {
+        let mut result = match self.srss.res_cause.read().bits() {
             0x0000_0001 => ResetCause::WDTReset,
             0x0000_0002 => ResetCause::ActiveFault,
             0x0000_0004 => ResetCause::DeepSleepFault,
@@ -35,13 +35,12 @@ impl System{
             _ => ResetCause::NoReset,
         };
         if result == ResetCause::NoReset {
-            result = match self.srss.res_cause2.read().bits(){
+            result = match self.srss.res_cause2.read().bits() {
                 0x0000_0001..=0x0000_ffff => ResetCause::LostHFClock,
-                0x0001_0000..=0xffff_0000 => ResetCause:: HFClockFrequencyError,
+                0x0001_0000..=0xffff_0000 => ResetCause::HFClockFrequencyError,
                 _ => ResetCause::NoReset,
             };
         }
         result
     }
-
 }
