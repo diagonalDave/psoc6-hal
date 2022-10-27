@@ -7,6 +7,7 @@ use crate::drivers::{
     backup::Backup,
     cpuss::Cpuss,
     flashc::Flash,
+    ipc,
     ipc::{semaphore::Semaphore, Channels, IntrStructs, IpcChannel},
     prot::Prot,
     system::System,
@@ -24,7 +25,16 @@ pub enum CpuMode {
     Sleep,
     DeepSleep,
 }
-
+#[derive(Debug)]
+pub enum Error{
+    IpcError(ipc::Error),
+}
+//allows ? operator use for all errors.
+impl core::convert::From<ipc::Error> for Error{
+    fn from( residual: ipc::Error)-> Error{
+        Error::IpcError(residual)
+    }
+}
 pub struct Modes {
     pub cm0p: CpuMode,
     pub cm4: CpuMode,

@@ -20,9 +20,11 @@ pub trait IpcChannel {
     type IntrStructs;
     fn split(self) -> (Self::Channels, Self::IntrStructs);
 }
+
 /// IpcChannelCallback trait must be implemented by any IPC channel
 /// when custom actions are required  by client for any IPC channel
 /// release or notify events.
+
 pub trait IpcCallback {
     type DataType;
     fn notify_callback(message: Self::DataType) -> ();
@@ -45,8 +47,15 @@ pub enum Error {
     SendFailed,
     ReceiveFailed,
     ChannelBusy,
-}
+    SemaphoreError(semaphore::Error),
 
+}
+//allows ? operator use for all errors.
+impl core::convert::From<semaphore::Error> for Error{
+    fn from( residual: semaphore::Error)-> Error{
+        Error::SemaphoreError(residual)
+    }
+}
 bitflags! {
     #[derive(Debug, Eq, PartialEq)]
     pub struct InterruptMaskBits:u32 {
@@ -211,6 +220,20 @@ macro_rules! ipc{
                            .write(|w|
                                   w.intr_notify()
                                   .bits(notify_intr_mask.bits() as u16))
+                    }
+                }
+                //is_locked returns the lock status of the ipc channel.
+                //#Safety: Deref of symbolic pointer, single instruction 
+                //         read of register with no side effects.
+                #[inline(always)]
+                pub fn is_locked(&self)-> bool{
+                    unsafe{
+                        (*IPC::PTR)
+                            .$structi
+                            .lock_status
+                            .read()
+                            .acquired()
+                            .bit_is_set()
                     }
                 }
                 // read_data_register reads and returns the byte of

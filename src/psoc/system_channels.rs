@@ -2,6 +2,7 @@ use crate::drivers::ipc::semaphore::{
     SemaphoreFlag,
     Set,
 };
+
 use cortex_m::interrupt::free;
 use crate::drivers::ipc::{
     IntrStructMaskBits,
@@ -66,12 +67,16 @@ impl Psoc{
         let sema_lock = self.ipc.semaphores.acquire_lock()?;
         unsafe{ sema_lock.write_data_register(flag.flag)};
         sema_lock.notify( notify_mask);
-        while sema_lock.read_data_register() == flag.flag {}
+        while sema_lock.is_locked(){}
         Ok(())
     }
-    pub fn receive_ipc_semaphore(&mut self, release_mask:&IntrStructMaskBits) -> Result<u32, Error>{
+    pub fn receive_ipc_semaphore(&mut self, flag: &SemaphoreFlag<Set>, release_mask:&IntrStructMaskBits) -> Result<u32, Error>{
         let sem_data = self.ipc.semaphores.read_data_register();
-        self.ipc.semaphores.release_lock(release_mask)?;
-        Ok(sem_data)
+        if sem_data == flag.flag {
+            Ok(flag.flag as u32)
+        }else{
+            self.ipc.semaphores.release_lock(release_mask)?;
+            Ok(sem_data)
+        }
     }
 }
