@@ -14,3 +14,4 @@ pub mod drivers;
 pub mod gpio;
 pub mod prelude;
 pub mod psoc;
+pub mod error;

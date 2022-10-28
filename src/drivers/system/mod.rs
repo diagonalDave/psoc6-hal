@@ -11,7 +11,7 @@
 //! - Profiler -- profiler
 
 pub use clocks::{
-    ClockPath, Clocks, Divider, DsiMux, Error, FllCco, FllConfig, FllGain, FllOutputDiv,
+    ClockPath, Clocks, Divider, DsiMux, FllCco, FllConfig, FllGain, FllOutputDiv,
     PathSource, RootClocks, SelectChannelNumber,
 };
 pub use reset_cause::ResetCause;

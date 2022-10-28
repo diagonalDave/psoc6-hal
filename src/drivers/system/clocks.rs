@@ -42,6 +42,7 @@ use cortex_m::asm::delay;
 
 use crate::drivers::system::System;
 use core::result::Result;
+use crate::error::Error;
 
 pub enum Clocks {
     Imo,    // 8-MHz internal main oscillator
@@ -99,17 +100,7 @@ pub enum DsiMux {
     Wco = 17,
     Pilo = 19,
 }
-#[derive(PartialEq)]
-pub enum Error {
-    NoError,
-    UnknownLfClkSource,
-    UnknownPathSource,
-    FllCouldNotBeConfigured,
-    FllCouldNotBeStarted,
-    FllStartupCouldNotBeCompletedBeforeTimeout,
-    FllStartupFailedCcoNotReady,
-    FllStartupFailedFllCouldNotBeLocked,
-}
+
 /// FLL configuration enums
 pub struct FllConfig {
     fll_mult: u32,

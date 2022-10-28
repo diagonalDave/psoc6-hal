@@ -12,7 +12,7 @@ use core::marker::PhantomData;
 use cortex_m::interrupt::CriticalSection;
 
 pub mod semaphore;
-
+use crate::error::Error;
 //pub mod pipes;
 
 pub trait IpcChannel {
@@ -40,22 +40,8 @@ pub trait Lock {}
 impl Lock for Acquired {}
 impl Lock for Released {}
 
-#[derive(Debug)]
-pub enum Error {
-    AcquisitionFailed,
-    ReleaseFailed,
-    SendFailed,
-    ReceiveFailed,
-    ChannelBusy,
-    SemaphoreError(semaphore::Error),
 
-}
-//allows ? operator use for all errors.
-impl core::convert::From<semaphore::Error> for Error{
-    fn from( residual: semaphore::Error)-> Error{
-        Error::SemaphoreError(residual)
-    }
-}
+
 bitflags! {
     #[derive(Debug, Eq, PartialEq)]
     pub struct InterruptMaskBits:u32 {

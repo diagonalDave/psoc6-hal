@@ -32,13 +32,15 @@ use crate::drivers::ipc::{
     IntrStructMaskBits,
     ChannelConfig,
     Syscall,
-    Lock,
 };
 
-pub struct Semaphore<'a, LOCK, INTRLOCK, STATE> {
+use crate::error::Error;
+
+#[derive(Debug)]
+pub struct Semaphore<STATE> {
     flags: u128,
-    channel: &'a Semaphores<LOCK>,
-    intr_struct: &'a Syscall<INTRLOCK>,
+    release_mask: IntrStructMaskBits,
+    notify_mask: IntrStructMaskBits,
     _state: PhantomData<STATE>,
 }
 #[derive(Debug)]
@@ -46,127 +48,103 @@ pub struct SemaphoreFlag<FLAG> {
     _flag: PhantomData<FLAG>,
     pub flag: u32,
 }
-#[derive(Debug)]
-pub enum Error {
-    FlagUnknown,
-    FlagLocked,
-    FlagNotSet,
-}
+
 
 pub struct Set {}
 pub struct Clear {}
 
-trait Flag {}
-impl Flag for Set {}
-impl Flag for Clear {}
-
 pub struct Configured{}
 pub struct UnInit{}
 
-trait State {}
+pub trait State {}
 impl State for Configured{}
 impl State for UnInit{}
+impl State for Set {}
+impl State for Clear{}
 
-impl<'a, L, IL, S>  Semaphore<'a, L, IL, S>
-where
-    L: Lock,
-    IL: Lock,
-    S: State{
-    pub fn new(channel: &'a Semaphores<L>, intr_struct: &'a Syscall<IL> ) -> Semaphore<L, IL, UnInit> {
-        //create IPC channel
-        Semaphore {
-            flags: 0u128,
-            channel,
-            intr_struct,
+impl<S>  Semaphore<S>{
+    pub fn new()-> Semaphore<UnInit>{
+        Semaphore{
+            flags: 0,
+            release_mask: IntrStructMaskBits::none,
+            notify_mask: IntrStructMaskBits::none,
             _state: PhantomData::<UnInit>,
         }
     }
-    pub fn configure(self, config: & ChannelConfig) -> Semaphore<Released, Released, Configured>{
-        let channel = self.channel.acquire_lock?;
-        free(|cs| {            
-            self.intr_struct.configure_notify(&config.intr_notify_mask, cs);
-            self.intr_struct.configure_release(&config.intr_release_mask, cs);
-        });
-        channel.release_lock(IntrStructMaskBits::none);
-        Semaphore {
-            flags: self.flags,
-            channel: self.channel,
-            intr_struct: self.intr_struct, 
-            _state: PhantomData::<Configured>,
-        }
-    }
+   
 }
-impl<'a, L, IL, S>  Semaphore<'a, L, IL, Configured>
-where
-    L: Lock,
-    IL: Lock,
-    S: State{
-    pub fn set(&mut self, flag_number: u32) -> Result<SemaphoreFlag<Set>, Error> {
-        self.set_local(flag_number)?;
-        
-        //Acquire the Semaphore channel
-        self.acquire_lock()?;
-        
-        //Send the data.
-        //#Safety: atomic write synchronised with other core by lock.
-        unsafe{self.channel.write_data_register(flag_number)};
-        
-        //Send a notification to the other core.
-        self.channel.notify(&IntrStructMaskBits::syscall);
-        
-        Ok(SemaphoreFlag{
-            _flag: PhantomData::<Set>,
-            flag: flag_number,
+
+impl<'a> Semaphore<UnInit>{
+    #[cfg(not(armv7em))]
+    pub fn configure(&self, channel: &'a mut Semaphores<Released>, intr_struct: &'a mut Syscall<Released>, config: ChannelConfig) -> Result<Semaphore<Configured>, Error> {
+        //create IPC channel
+        let mut acquired_channel = channel.acquire_lock()?;
+        free(|cs| {            
+            intr_struct.configure_notify(&config.intr_notify_mask, cs);
+            intr_struct.configure_release(&config.intr_release_mask, cs);            
+        });
+        //Send the semaphore pointer to the CM4 core.
+        unsafe{acquired_channel.write_data_register(core::ptr::addr_of!(self) as u32)}
+        //Don't wait for other channel to unlock given this could be run
+        //during system startup well before CM4 has started.
+        acquired_channel.release_lock(&IntrStructMaskBits::none)?;
+        Ok(Semaphore {
+            flags: self.flags,
+            release_mask: config.struct_release,
+            notify_mask: config.struct_notify,
+            _state: PhantomData::<Configured>,
         })
     }
-    /// notify_clear clears the semaphore flag after a notification has
-    /// been received.
-    pub fn notify_clear(&mut self) -> Result<SemaphoreFlag<Set>, Error> {
-        // Read the Semaphore sent data.
-        // Release the Semaphore channel.
-        // Update local copy
-        //Return a Set semaphore flag.
-        self.set_local(flag)
-    }
-
-    pub fn clear(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear> {
-        let data = self.read_data_register(); 
-        //Acquire the Semaphore channel
-        //Send the semaphoreFlag as data.
-        //Send a notification.
-        //clear the flag
-        self.clear_local(flag)
-    }
-    pub fn notify_clear(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear> {
-        //Read the Semaphore data
-        // Release the Semaphore channel
-        // Update the local Semaphore copy.
-        //Return a SemaphoreFlag<Clear>
-        self.clear_local(flag)
-    }
-
-    fn clear_local(&mut self, flag: SemaphoreFlag<Set>) -> SemaphoreFlag<Clear> {
-        self.flags &= !(1 << flag.flag);
-        //create a clear semaphoreFlag.
-        SemaphoreFlag {
-            _flag: PhantomData::<Clear>,
-            flag: flag.flag,
+    ///The CM4 core 
+    #[cfg(armv7em)]
+    pub fn configure(self, channel: &'a Semaphores<L> ) -> Semaphore<Configured> {
+        //Read the data present on Semaphores IpcChannel.
+        let temp_sem: Semaphore<Configured>;
+        unsafe{
+            &temp_sem = channel.read_data_register() as *const u32;
         }
+        //Channel shouldn't be locked if being configured.
+        //Releasing without notification just in case.
+        channel.release_lock(IntrStructMaskBits::none);
+        temp_sem
+    }
+}
+
+impl<'a> Semaphore<Configured>{
+    pub fn set(&mut self, flag_number: u32) -> Result<(), Error> {
+        self.set_local(flag_number)       
+    }
+   
+
+    pub fn clear(&mut self, flag_number: u32) -> Result<(), Error> {
+        self.clear_local(flag_number)
+    }
+    #[inline(always)]
+    pub fn flag_is_set(&self, flag_number: u32) -> bool{
+        self.flags & (!(1 << flag_number)) != 0
     }
 
-    fn set_local(&mut self, flag_number: u32) -> Result<SemaphoreFlag<Set>, Error> {
+    fn clear_local(&mut self, flag_number: u32) -> Result<(), Error> {
+        let mask = !(1 << flag_number);
+        if mask & self.flags != 0 {
+            self.flags &= !(1 << flag_number);
+            Ok(())
+        }else{
+            Err(Error::FlagCannotBeClearedIsNotSet)
+        }
+     }
+
+    fn set_local(&mut self, flag_number: u32) -> Result<(), Error> {
         if flag_number < 127 {
             if self.flags & (1 << flag_number) != 0 {
                 Err(Error::FlagLocked)
             } else {
                 self.flags |= 1 << flag_number;
-                Ok(SemaphoreFlag {
-                    _flag: PhantomData::<Set>,
-                    flag: flag_number,
-                })
+                Ok(())
             }
         } else {
             Err(Error::FlagUnknown)
         }
     }
+    
 }

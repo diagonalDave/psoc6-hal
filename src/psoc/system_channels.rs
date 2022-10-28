@@ -7,10 +7,9 @@ use cortex_m::interrupt::free;
 use crate::drivers::ipc::{
     IntrStructMaskBits,
     ChannelConfig,
-    Error,
 };
 use crate::psoc::Psoc;
-
+use crate::error::Error;
 impl Psoc{
     //configure_ipc_semaphores sets up the ipc Semaphores channel and configures
     //any required state.
