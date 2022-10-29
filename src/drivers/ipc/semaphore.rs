@@ -28,6 +28,7 @@ use core::marker::PhantomData;
 use cortex_m::interrupt::free;
 use crate::drivers::ipc::{
     Released,
+    Lock,
     Semaphores,
     IntrStructMaskBits,
     ChannelConfig,
@@ -37,6 +38,7 @@ use crate::drivers::ipc::{
 use crate::error::Error;
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct Semaphore<STATE> {
     flags: u128,
     release_mask: IntrStructMaskBits,
@@ -62,7 +64,7 @@ impl State for UnInit{}
 impl State for Set {}
 impl State for Clear{}
 
-impl<S>  Semaphore<S>{
+impl<S>   Semaphore<S>{
     pub fn new()-> Semaphore<UnInit>{
         Semaphore{
             flags: 0,
@@ -84,7 +86,8 @@ impl<'a> Semaphore<UnInit>{
             intr_struct.configure_release(&config.intr_release_mask, cs);            
         });
         //Send the semaphore pointer to the CM4 core.
-        unsafe{acquired_channel.write_data_register(core::ptr::addr_of!(self) as u32)}
+        
+        unsafe{acquired_channel.write_data_register(core::ptr::addr_of!(self) as *const u32)};
         //Don't wait for other channel to unlock given this could be run
         //during system startup well before CM4 has started.
         acquired_channel.release_lock(&IntrStructMaskBits::none)?;
@@ -97,16 +100,22 @@ impl<'a> Semaphore<UnInit>{
     }
     ///The CM4 core 
     #[cfg(armv7em)]
-    pub fn configure(self, channel: &'a Semaphores<L> ) -> Semaphore<Configured> {
+    pub fn configure<L: Lock>(self, channel: &'a mut Semaphores<L> ) -> Semaphore<Configured> {
         //Read the data present on Semaphores IpcChannel.
-        let temp_sem: Semaphore<Configured>;
-        unsafe{
-            &temp_sem = channel.read_data_register() as *const u32;
-        }
+        let temp_sen: * const Semaphore<Configured>;
+//      unsafe{
+            temp_sen = channel.read_data_register() as *const Semaphore<Configured>;
+//      }
         //Channel shouldn't be locked if being configured.
         //Releasing without notification just in case.
-        channel.release_lock(IntrStructMaskBits::none);
-        temp_sem
+        channel.release_lock(&IntrStructMaskBits::none);
+        Semaphore{
+            flags: unsafe{(*temp_sen).flags},
+            release_mask: unsafe{(*temp_sen).release_mask},
+            notify_mask: unsafe{(*temp_sen).notify_mask} ,
+            _state: PhantomData::<Configured>
+            }
+
     }
 }
 

@@ -62,20 +62,20 @@ impl Psoc{
         sema_channel.release_lock(&channel_config.struct_notify)?; 
         Ok(())
     }
-    pub fn send_ipc_semaphore(&mut self, flag:&SemaphoreFlag<Set>, notify_mask: &IntrStructMaskBits)-> Result<(), Error>{
-        let sema_lock = self.ipc.semaphores.acquire_lock()?;
-        unsafe{ sema_lock.write_data_register(flag.flag)};
-        sema_lock.notify( notify_mask);
-        while sema_lock.is_locked(){}
-        Ok(())
-    }
-    pub fn receive_ipc_semaphore(&mut self, flag: &SemaphoreFlag<Set>, release_mask:&IntrStructMaskBits) -> Result<u32, Error>{
-        let sem_data = self.ipc.semaphores.read_data_register();
-        if sem_data == flag.flag {
-            Ok(flag.flag as u32)
-        }else{
-            self.ipc.semaphores.release_lock(release_mask)?;
-            Ok(sem_data)
-        }
-    }
+    // pub fn send_ipc_semaphore(&mut self, flag:&SemaphoreFlag<Set>, notify_mask: &IntrStructMaskBits)-> Result<(), Error>{
+    //     let sema_lock = self.ipc.semaphores.acquire_lock()?;
+    //     unsafe{ sema_lock.write_data_register(flag.flag)};
+    //     sema_lock.notify( notify_mask);
+    //     while sema_lock.is_locked(){}
+    //     Ok(())
+    // }
+    // pub fn receive_ipc_semaphore(&mut self, flag: &SemaphoreFlag<Set>, release_mask:&IntrStructMaskBits) -> Result<u32, Error>{
+    //     let sem_data = self.ipc.semaphores.read_data_register();
+    //     if sem_data == flag.flag {
+    //         Ok(flag.flag as u32)
+    //     }else{
+    //         self.ipc.semaphores.release_lock(release_mask)?;
+    //         Ok(sem_data)
+    //     }
+    // }
 }

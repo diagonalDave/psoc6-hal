@@ -43,7 +43,7 @@ impl Lock for Released {}
 
 
 bitflags! {
-    #[derive(Debug, Eq, PartialEq)]
+    #[derive(Debug, Eq, PartialEq, Copy, Clone)]
     pub struct InterruptMaskBits:u32 {
         const cpuss_interrupt0 = (1 << 0);
         const cpuss_interrupt1 = (1 << 1);
@@ -65,7 +65,7 @@ bitflags! {
     }
 }
 bitflags! {
-    #[derive(Debug, Eq, PartialEq)]
+    #[derive(Debug, Eq, PartialEq, Copy, Clone)]
     pub struct IntrStructMaskBits:u32 {
         const syscall         = (1 << 0);
         const intr_struct1     = (1 << 1);
@@ -87,7 +87,7 @@ bitflags! {
     }
 }
 bitflags! {
-    #[derive(Debug, Eq, PartialEq)]
+    #[derive(Debug, Eq, PartialEq, Copy, Clone)]
     pub struct ChannelMaskBits:u32 {
         const syscall_cm0 = (1 << 0);            // syscall_cm0
         const syscall_cm4 = (1 << 1);            // syscall_cm4
@@ -228,13 +228,13 @@ macro_rules! ipc{
                 // IPC Channel methods.
                 // Safety: Single instruction read.
                 #[inline(always)]
-                pub(crate) fn read_data_register(&self) -> u32{
+                pub(crate) fn read_data_register(&self) ->*const u32{
                     unsafe{
                         (*IPC::PTR)
                             .$structi
                             .data
                             .read()
-                            .bits()
+                            .bits() as *const u32
                     }
                 }
             }
@@ -277,12 +277,12 @@ macro_rules! ipc{
                 // unsafe because no precondition testing to ensure synchornised access
                 // to data register.
                 #[inline(always)]
-                pub(crate) unsafe fn write_data_register(&self, data: u32) -> (){
+                pub(crate) unsafe fn write_data_register(&self, data:* const u32) -> (){
                     unsafe{
                         (*IPC::PTR)
                             .$structi
                             .data
-                            .write(|w| w.bits(data));
+                            .write(|w| w.bits(data as u32));
                     }
                 }
                
