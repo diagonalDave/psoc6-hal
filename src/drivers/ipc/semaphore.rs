@@ -40,7 +40,7 @@ use crate::error::Error;
 #[derive(Debug)]
 #[repr(C)]
 pub struct Semaphore<STATE> {
-    flags: u128,
+    flags_ptr: *const u32,
     release_mask: IntrStructMaskBits,
     notify_mask: IntrStructMaskBits,
     _state: PhantomData<STATE>,
@@ -64,62 +64,43 @@ impl State for UnInit{}
 impl State for Set {}
 impl State for Clear{}
 
-impl<S>   Semaphore<S>{
-    pub fn new()-> Semaphore<UnInit>{
-        Semaphore{
-            flags: 0,
-            release_mask: IntrStructMaskBits::none,
-            notify_mask: IntrStructMaskBits::none,
-            _state: PhantomData::<UnInit>,
-        }
-    }
-   
-}
-
-impl<'a> Semaphore<UnInit>{
+impl<'a, S>   Semaphore<S>{
     #[cfg(not(armv7em))]
-    pub fn configure(&self, channel: &'a mut Semaphores<Released>, intr_struct: &'a mut Syscall<Released>, config: ChannelConfig) -> Result<Semaphore<Configured>, Error> {
-        //create IPC channel
+    pub fn configure(flags:&'a mut u128, channel: &'a mut Semaphores<Released>, intr_struct: &'a mut Syscall<Released>, config: ChannelConfig) -> Result<Semaphore<Configured>, Error>{
+        //Configure the intr_struct notify and release masks.
         let mut acquired_channel = channel.acquire_lock()?;
         free(|cs| {            
             intr_struct.configure_notify(&config.intr_notify_mask, cs);
             intr_struct.configure_release(&config.intr_release_mask, cs);            
         });
-        //Send the semaphore pointer to the CM4 core.
-        
-        unsafe{acquired_channel.write_data_register(core::ptr::addr_of!(self) as *const u32)};
-        //Don't wait for other channel to unlock given this could be run
-        //during system startup well before CM4 has started.
+        let flags_ptr = core::ptr::addr_of!(*flags) as *const u32;
+        unsafe{acquired_channel.write_data_register(flags_ptr)};
         acquired_channel.release_lock(&IntrStructMaskBits::none)?;
-        Ok(Semaphore {
-            flags: self.flags,
-            release_mask: config.struct_release,
-            notify_mask: config.struct_notify,
-            _state: PhantomData::<Configured>,
+         Ok(Semaphore {
+             flags_ptr,
+             release_mask: config.struct_release,
+             notify_mask: config.struct_notify,
+             _state: PhantomData::<Configured>,
         })
     }
     ///The CM4 core 
     #[cfg(armv7em)]
-    pub fn configure<L: Lock>(self, channel: &'a mut Semaphores<L> ) -> Semaphore<Configured> {
-        //Read the data present on Semaphores IpcChannel.
-        let temp_sen: * const Semaphore<Configured>;
-//      unsafe{
-            temp_sen = channel.read_data_register() as *const Semaphore<Configured>;
-//      }
+    pub fn configure<L: Lock>(channel: &'a mut Semaphores<L>, config: &ChannelConfig ) -> Semaphore<'a, Configured> {
+                
         //Channel shouldn't be locked if being configured.
         //Releasing without notification just in case.
         channel.release_lock(&IntrStructMaskBits::none);
         Semaphore{
-            flags: unsafe{(*temp_sen).flags},
-            release_mask: unsafe{(*temp_sen).release_mask},
-            notify_mask: unsafe{(*temp_sen).notify_mask} ,
+            flags_ptr: unsafe{channel.read_data_register() as * const u32},
+            release_mask: config.struct_release,
+            notify_mask: config.struct_notify,
             _state: PhantomData::<Configured>
-            }
-
+        }
     }
 }
 
 impl<'a> Semaphore<Configured>{
+    
     pub fn set(&mut self, flag_number: u32) -> Result<(), Error> {
         self.set_local(flag_number)       
     }
@@ -130,25 +111,34 @@ impl<'a> Semaphore<Configured>{
     }
     #[inline(always)]
     pub fn flag_is_set(&self, flag_number: u32) -> bool{
-        self.flags & (!(1 << flag_number)) != 0
+        unsafe{*self.flags_ptr as u128} & ((1 << flag_number) as u128) != 0
     }
 
     fn clear_local(&mut self, flag_number: u32) -> Result<(), Error> {
         let mask = !(1 << flag_number);
-        if mask & self.flags != 0 {
-            self.flags &= !(1 << flag_number);
+        if mask & (*self.flags_ptr as u128) == 0 {
+            *self.flags_ptr &= !(1 << flag_number);
             Ok(())
         }else{
             Err(Error::FlagCannotBeClearedIsNotSet)
         }
-     }
+    }
+    // Step thorug cM0
+    // 0x4023008c	9c	3e	02	08 sets semaphore fine.
+    // little endian   08023e9c -> 04	03	32	40                 
+    // 802 3F98  0x0000_0000_0000_0001_0000_0000_0000_0000
+    //Step through on Cm4
+    //0x4023008c	9c	3e	02	08 same as cm0 so it appears pointer is passed correctly.
+    //sem 0x080477B0 (All)	semaphore not set to shared semaphore memory address.
 
+    //0x0000_0001_0000_0001_0000_0000_0000_0000
+    
     fn set_local(&mut self, flag_number: u32) -> Result<(), Error> {
         if flag_number < 127 {
-            if self.flags & (1 << flag_number) != 0 {
+            if *self.flags & (1 << flag_number) != 0 {
                 Err(Error::FlagLocked)
             } else {
-                self.flags |= 1 << flag_number;
+                *self.flags |= 1 << flag_number;
                 Ok(())
             }
         } else {
