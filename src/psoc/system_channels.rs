@@ -1,7 +1,3 @@
-use crate::drivers::ipc::semaphore::{
-    SemaphoreFlag,
-    Set,
-};
 
 use cortex_m::interrupt::free;
 use crate::drivers::ipc::{
