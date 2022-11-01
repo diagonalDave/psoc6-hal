@@ -92,11 +92,16 @@ impl<'a, S>   Semaphore<S>{
 }
 
 impl<'a> Semaphore<Configured>{
+    #[cfg(not(armv7em))]
     pub fn start(&mut self, channel: &'a mut Semaphores<Released>)->Result<(), Error>{
         let mut acquired_channel = channel.acquire_lock()?;
-        unsafe{acquired_channel.write_data_register(core::ptr::addr_of!(self) as *const u32)};
+        unsafe{acquired_channel.write_data_register((self as *const Semaphore<Configured>) as *const u32)};
         acquired_channel.release_lock(&IntrStructMaskBits::none)?;
         Ok(())
+    }
+     #[inline(always)]
+    pub fn flag_is_set(&self, flag_number: u32) -> bool{
+        self.flags & (1 << flag_number)  != 0
     }
     pub fn set(&mut self, flag_number: u32) -> Result<(), Error> {
         self.set_local(flag_number)       
@@ -106,10 +111,7 @@ impl<'a> Semaphore<Configured>{
     pub fn clear(&mut self, flag_number: u32) -> Result<(), Error> {
         self.clear_local(flag_number)
     }
-    #[inline(always)]
-    pub fn flag_is_set(&self, flag_number: u32) -> bool{
-        self.flags & ((1 << flag_number) as u128) != 0
-    }
+   
 
     fn clear_local(&mut self, flag_number: u32) -> Result<(), Error> {
         let mask = !(1 << flag_number);
