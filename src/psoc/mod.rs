@@ -5,7 +5,7 @@ use crate::pac::Peripherals;
 
 use crate::drivers::{
    // backup::Backup,
-    //cpuss::Cpuss,
+    cpuss::Cpuss,
     //flashc::Flash,
     ipc::{
     //    semaphore::Semaphore,
@@ -42,7 +42,7 @@ pub struct Modes {
 
 pub struct Psoc {
     // pub system: System,
-    // pub cpuss: Cpuss,
+    pub cpuss: Cpuss,
     // pub flash: Flash,
     pub ipc: Channels,
     pub ipc_intr: IntrStructs,
@@ -60,7 +60,7 @@ impl Psoc {
         let (ipc, ipc_intr) = p.IPC.split();
         Psoc {
             // system: System::from(p.SRSS),
-            // cpuss: Cpuss::from(p.CPUSS),
+            cpuss: Cpuss::from(p.CPUSS),
             // flash: Flash::from(p.FLASHC),
             ipc,
             ipc_intr,

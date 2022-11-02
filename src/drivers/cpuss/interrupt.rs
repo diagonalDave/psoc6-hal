@@ -9,12 +9,12 @@
 
 use crate::drivers::cpuss::Cpuss;
 
-#[cfg(armv6m)]
+#[cfg(not(armv7em))]
 use crate::pac::Interrupt;
 
 impl Cpuss {
     #[allow(non_snake_case)]
-    #[cfg(armv6m)]
+    #[cfg(not(armv7em))]
     pub fn configure_interrupt_mux(&self, intr_source: InterruptSource, irqn: Interrupt) -> () {
         // Find correct int_ctl register. There are 4 irqn per ctl register.
         match irqn {

@@ -2,7 +2,8 @@
 
 use core::marker::PhantomData;
 use cortex_m::interrupt::CriticalSection;
-
+use crate::error::Error;
+use crate::drivers::cpuss::interrupt::InterruptSource;
 /// Extension trait to split a GPIO peripheral in independent pins and
 /// registers.
 pub trait GpioExt {
@@ -39,15 +40,16 @@ pub struct Output<MODE> {
 }
 
 pub enum EdgeSelect {
-    Disable,
-    Rising,
-    Falling,
-    Both,
+    Disable = 0,
+    Rising = 1,
+    Falling = 2,
+    Both = 3,
 }
 pub enum FilterSelect {
-    Disable,
-    Rising,
-    Falling,
+    Disable = 0,
+    Rising = 1,
+    Falling = 2,
+    Both = 3,
 }
 pub enum PinLevel {
     Low = 0,
@@ -60,6 +62,7 @@ macro_rules! gpio {
     ([
      $($Pi_j:ident: ($pi_j:ident, $prti:ident, $inx:ident, $j:expr, $MODE:ty)),+
     ]) => {
+
         use core::convert::Infallible;
 
         use embedded_hal::digital::v2::{OutputPin, InputPin};
@@ -163,6 +166,7 @@ macro_rules! gpio {
 
 
                 /// Set the drive mode for the pin
+                #[inline(always)]
                 fn set_drive_mode(&self, bits: u8) {
                     unsafe { (*GPIO::PTR).$prti.cfg.modify(|_, w| {
                         match $j {
@@ -178,6 +182,7 @@ macro_rules! gpio {
                         }
                     })}
                 }
+                #[inline(always)]
                 fn set_to_input(&self) {
                     unsafe{(*GPIO::PTR).$prti.cfg.modify(|_, w| {
                         match $j {
@@ -193,6 +198,7 @@ macro_rules! gpio {
                         }
                     })}
                 }
+                #[inline(always)]
                 fn set_to_output(&self) {
                     unsafe{(*GPIO::PTR).$prti.cfg.modify(|_, w| {
                         match $j {
@@ -208,27 +214,112 @@ macro_rules! gpio {
                         }
                     })}
                 }
+                #[inline(always)]
                 fn set_input_high_low(&self, level: PinLevel){
                     match level{
                         PinLevel::Low =>  unsafe { (*GPIO::PTR).$prti.out_clr.write(|w| w.bits(1 << $j)) },
                         PinLevel::High => unsafe { (*GPIO::PTR).$prti.out_set.write(|w| w.bits(1 << $j)) },
                     }
                 }
-
-                pub fn configure_interrupts(&self, _filt_sel: FilterSelect,_edge_sell: EdgeSelect){
-                    todo!("Implement the fuck out of this thing.");
-
+                ////////////////////////////
+                // GPIO interrupts provides 16 interrupt lines(IRQn) that
+                // can be triggered by an edge on a gpio pin. Each port
+                // has one fixed IRQn, e.g. pin0_4 will trigger the
+                // port0 IRQn, IOSS_INTERRUPTS_GPIO_0.
+                // **configure_interrupt** 
+                // 1. Configures the 50ns  glitch filter:
+                //    - Only one pin can be filtered at anytime.
+                //      Configuring this pin will stop filtering on
+                //      any previously configured pins.
+                //    - The filter can filter a rising, falling or both
+                //      edges. Or can be disabled.
+                // 2. Configures the interrupt trigger for rising, falling or both
+                //    edges. The trigger can also be disabled.
+                // 3. Configures the interrupt forwarding to the nvic.
+                fn configure_interrupt(&self, filt_sel: FilterSelect, edge_sel: EdgeSelect){
+                    //Filtering allows a 50ns glitch filter to be added to the input path.'
+                    unsafe{
+                    if (*GPIO::PTR).$prti.intr_cfg.read().flt_sel().bits() != $j {
+                        match filt_sel {
+                            //These options need to set flt_edg_sel while checking flt_sel set to pin number.
+                            //Also set the interrupt for the filtered pin.
+                            FilterSelect::Rising | FilterSelect::Falling | FilterSelect::Both => {
+                                (*GPIO::PTR).$prti.intr_cfg.write(|w| w.flt_sel().bits($j as u8));
+                                (*GPIO::PTR).$prti.intr_cfg.write(|w| w.flt_edge_sel().bits(filt_sel as u8));
+                                (*GPIO::PTR).$prti.intr_mask.modify(|_, w| w.flt_edge().set_bit());
+                            }
+                            _=> { //Do nothing here. The pin is not being filtered and therefore
+                                // won't need to be disabled.
+                            }
+                        }
+                    }else{
+                        //the filter has been configured for this pin so set the filters as required.
+                        (*GPIO::PTR).$prti.intr_cfg.write(|w| w.flt_edge_sel().bits(filt_sel as u8));
+                        (*GPIO::PTR).$prti.intr_mask.modify(|_, w| w.flt_edge().set_bit());
+                    }
+                    //modify the edge_sel type.
+                    (*GPIO::PTR).$prti.intr_cfg.modify(|_,w|
+                                               match $j{
+                                                   0 => w.edge0_sel().bits(edge_sel as u8),
+                                                   1 => w.edge1_sel().bits(edge_sel as u8),
+                                                   2 => w.edge2_sel().bits(edge_sel as u8),
+                                                   3 => w.edge3_sel().bits(edge_sel as u8),
+                                                   4 => w.edge4_sel().bits(edge_sel as u8),
+                                                   5 => w.edge5_sel().bits(edge_sel as u8),
+                                                   6 => w.edge6_sel().bits(edge_sel as u8),
+                                                   7 => w.edge7_sel().bits(edge_sel as u8),
+                                                   _ => panic!(),
+                                               }
+                    );
+                    //Set an interrupt to be
+                    (*GPIO::PTR).$prti.intr_mask.modify(|_, w|  
+                                                match $j{
+                                                    0 => w.edge0().set_bit(),
+                                                    1 => w.edge1().set_bit(),
+                                                    2 => w.edge2().set_bit(),
+                                                    3 => w.edge3().set_bit(),
+                                                    4 => w.edge4().set_bit(),
+                                                    5 => w.edge5().set_bit(),
+                                                    6 => w.edge6().set_bit(),
+                                                    7 => w.edge7().set_bit(),
+                                                    _ => panic!(),
+                                                }
+                    );}
+                }
+                
+                
+                #[inline(always)]
+                fn clear_interrupt(&self){
+                    //psoc code reads the buffer
+                    //then clears the interrupt
+                    //then flushes to hardware with another read.
+                    unsafe{
+                        (*GPIO::PTR).$prti.intr_mask.read(); //seems like this will this be optimised out?
+                        (*GPIO::PTR).$prti.intr_mask.modify(|_ ,w|
+                                                match $j{
+                                                    0 => w.edge0().set_bit(),
+                                                    1 => w.edge1().set_bit(),
+                                                    2 => w.edge2().set_bit(),
+                                                    3 => w.edge3().set_bit(),
+                                                    4 => w.edge4().set_bit(),
+                                                    5 => w.edge5().set_bit(),
+                                                    6 => w.edge6().set_bit(),
+                                                    7 => w.edge7().set_bit(),
+                                                    _ => panic!(),
+                                                });
+                        (*GPIO::PTR).$prti.intr_mask.read();//seems like this will this be optimised out?
+                    }
                 }
             }
 
             impl<MODE> OutputPin for $Pi_j<Output<MODE>> {
                 type Error = Infallible;
-
+                #[inline(always)]
                 fn set_high(&mut self) -> Result<(), Self::Error> {
                     unsafe { (*GPIO::PTR).$prti.out_set.write(|w| w.bits(1 << $j)) };
                     Ok(())
                 }
-
+                #[inline(always)]
                 fn set_low(&mut self) -> Result<(), Self::Error> {
                     unsafe { (*GPIO::PTR).$prti.out_clr.write(|w| w.bits(1 << $j)) };
                     Ok(())
@@ -237,9 +328,11 @@ macro_rules! gpio {
             }
             impl<MODE> InputPin for $Pi_j<Input<MODE>>{
                 type Error = Infallible;
+                #[inline(always)]
                 fn is_high(&self) -> Result<bool, Self::Error>{
                     Ok(unsafe{ (*GPIO::PTR).$prti.in_.read().$inx().bit_is_set()})
                 }
+                #[inline(always)]
                 fn is_low(&self) -> Result<bool, Self::Error>{
                     Ok(unsafe{ (*GPIO::PTR).$prti.in_.read().$inx().bit_is_clear()})
                 }
