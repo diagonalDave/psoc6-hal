@@ -38,19 +38,26 @@ pub struct Input<MODE> {
 pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
-
+#[derive(Debug, PartialEq, Eq)]
 pub enum EdgeSelect {
     Disable = 0,
     Rising = 1,
     Falling = 2,
     Both = 3,
 }
+#[derive(Debug, PartialEq, Eq)]
 pub enum FilterSelect {
     Disable = 0,
     Rising = 1,
     Falling = 2,
     Both = 3,
 }
+#[derive(Debug, PartialEq, Eq)]
+pub enum PinInterrupt{
+    Set,
+    Clear,
+}
+#[derive(Debug, PartialEq, Eq)]
 pub enum PinLevel {
     Low = 0,
     High = 1,
@@ -236,7 +243,7 @@ macro_rules! gpio {
                 // 2. Configures the interrupt trigger for rising, falling or both
                 //    edges. The trigger can also be disabled.
                 // 3. Configures the interrupt forwarding to the nvic.
-                fn configure_interrupt(&self, filt_sel: FilterSelect, edge_sel: EdgeSelect){
+                pub fn configure_interrupt(&self, filt_sel: FilterSelect, edge_sel: EdgeSelect){
                     //Filtering allows a 50ns glitch filter to be added to the input path.'
                     unsafe{
                     if (*GPIO::PTR).$prti.intr_cfg.read().flt_sel().bits() != $j {
@@ -289,25 +296,54 @@ macro_rules! gpio {
                 
                 
                 #[inline(always)]
-                fn clear_interrupt(&self){
-                    //psoc code reads the buffer
-                    //then clears the interrupt
-                    //then flushes to hardware with another read.
-                    unsafe{
-                        (*GPIO::PTR).$prti.intr_mask.read(); //seems like this will this be optimised out?
-                        (*GPIO::PTR).$prti.intr_mask.modify(|_ ,w|
-                                                match $j{
-                                                    0 => w.edge0().set_bit(),
-                                                    1 => w.edge1().set_bit(),
-                                                    2 => w.edge2().set_bit(),
-                                                    3 => w.edge3().set_bit(),
-                                                    4 => w.edge4().set_bit(),
-                                                    5 => w.edge5().set_bit(),
-                                                    6 => w.edge6().set_bit(),
-                                                    7 => w.edge7().set_bit(),
-                                                    _ => panic!(),
-                                                });
-                        (*GPIO::PTR).$prti.intr_mask.read();//seems like this will this be optimised out?
+                pub fn clear_interrupt(&self){
+                    //Safety: PAC const pointer can always be safely dereferenced.
+                    
+                    let is_set = unsafe{(*GPIO::PTR).$prti.intr.read().bits()} & (1<<$j);
+                    if is_set != 0{
+                        //Clear the actual pin interrupt is set
+                        unsafe{(*GPIO::PTR).$prti.intr.modify(|_ ,w|
+                                                              match $j{
+                                                                  0 => w.edge0().set_bit(),
+                                                                  1 => w.edge1().set_bit(),
+                                                                  2 => w.edge2().set_bit(),
+                                                                  3 => w.edge3().set_bit(),
+                                                                  4 => w.edge4().set_bit(),
+                                                                  5 => w.edge5().set_bit(),
+                                                                  6 => w.edge6().set_bit(),
+                                                                  7 => w.edge7().set_bit(),
+                                                                  _ => panic!(),
+                                                              });
+                        }
+                        //If this pin is selected as the filter pin clear that interrupt too.
+                        if unsafe{(*GPIO::PTR).$prti.intr_cfg.read().flt_sel().bits()} == $j{
+                            unsafe{(*GPIO::PTR).$prti.intr.modify(|_,w| w.flt_edge().set_bit())};
+                        }else{
+                            //The pin is not the filter pin 
+                        }
+                    }else{                       
+                        //The pin interrupt is not set so nothing to clear.
+                    }
+                }
+                /// This function polls the pin interrupt and returns PinInterrupt::Set
+                /// when an interrupt has occurred and PinInterrupt::Clear when unset.
+                #[inline(always)]
+                pub fn interrupt(&self)->PinInterrupt{
+                    //check the filtered pin
+                    //Safety: PAC const pointer can always be safely dereferenced.
+                    if unsafe{(*GPIO::PTR).$prti.intr_cfg.read().flt_sel().bits()} == $j{
+                        if unsafe{(*GPIO::PTR).$prti.intr.read().flt_edge().bit_is_set()}{
+                            return PinInterrupt::Set
+                        }else{
+                            return PinInterrupt::Clear
+                        }
+                    }else{
+                        let is_set = unsafe{(*GPIO::PTR).$prti.intr.read().bits()} & (1<<$j);
+                        if is_set !=  0 {
+                            PinInterrupt::Set
+                        }else{
+                            PinInterrupt::Clear
+                        }
                     }
                 }
             }
