@@ -1,6 +1,7 @@
 use crate::drivers::cpuss::Cpuss;
 use crate::pac::cpuss::cm4_pwr_ctl::PWR_MODE_A;
 use cortex_m::interrupt::free;
+use crate::error::Error;
 // pub enum CoreStatus{
 //     CM4Enabled,      //< The Cortex-M4 core is enabled: power on, clock on, no isolate, no reset and no retain. 
 //     CM4Disabled,     //< The Cortex-M4 core is disabled: power off, clock off, isolate, reset and no retain.   
@@ -85,16 +86,33 @@ impl Cpuss {
          });
         self.cm4_status()
     }
-    
+    ///cm4_enable panics if vector_table_base impinges below 0x3ff.
      #[inline(always)]
-    pub fn cm4_enable(&self) -> PWR_MODE_A{
-         free(|_cs| {
-            //Safety: bits are as for TRM pp334 0x05fa is required to unlock the
-            //        register so the write will modify the pwr_mode bit.
-             self.cpu_sys.cm4_pwr_ctl.modify(|_,w| unsafe{w.bits(0x05fa0003)});
-             //wait for it to start.
-            while !self.cpu_sys.cm4_status.read().pwr_done().bit_is_set(){}
-         });
-        self.cm4_status()
+    pub fn cm4_enable(&self, vector_table_base:u32) -> PWR_MODE_A{
+         if vector_table_base & 0x3ff != 0 {
+            panic!()
+         }else{
+             free(|_cs| {
+                 //Safety: vector_table
+                 self.cpu_sys.cm4_vector_table_base.modify(|_, w| unsafe{w.bits(vector_table_base)});
+                 //Safety: bits are as for TRM pp334 0x05fa is required to unlock the
+                 //        register so the write will modify the pwr_mode bit.
+                 self.cpu_sys.cm4_pwr_ctl.modify(|_,w| unsafe{w.bits(0x05fa0003)});
+                 //wait for it to start.
+                 while !self.cpu_sys.cm4_status.read().pwr_done().bit_is_set(){}
+             });
+             self.cm4_status()
+         }
     }
+    // //Required to be the same as the linker script value. By default
+    // // this is set to half the available flash, i.e. 0x1000_0000 + 0x100_0000/2
+    // #[inline(always)]
+    // fn cm4_vector_table_base(&self, vector_table_base:u32)-> Result<(), Error>{
+    //     if vector_table_base & 0x3ff != 0 {
+    //         Err(Error::VectorTableBaseAddressIncludesReservedRange)
+    //     }else{
+    //         Ok(self.cpu_sys.cm4_vector_table_base.modify(|_, w| unsafe{w.addr22().bits(vector_table_base)}))
+    //     }
+       
+    // }
 }

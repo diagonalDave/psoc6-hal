@@ -5,23 +5,23 @@
 //! - Status, Identity and power control -- utility module
 //! - Interrupt configuration -- interrupt module
 
-use crate::pac::CPUSS;
+use crate::pac::CPUSS as CPU_SS;
 
 pub mod cores;
 pub mod interrupt;
 pub mod utility;
 
 pub struct Cpuss {
-    pub cpu_sys: CPUSS,
+    pub cpu_sys: CPU_SS,
 }
 
 impl Cpuss {
-    fn new(cpuss: CPUSS) -> Cpuss {
+    fn new(cpuss: CPU_SS) -> Cpuss {
         Cpuss { cpu_sys: cpuss }
     }
 }
-impl core::convert::From<CPUSS> for Cpuss {
-    fn from(cpuss: CPUSS) -> Cpuss {
+impl core::convert::From<CPU_SS> for Cpuss {
+    fn from(cpuss: CPU_SS) -> Cpuss {
         Cpuss::new(cpuss)
     }
 }
