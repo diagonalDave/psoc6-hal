@@ -57,3 +57,7 @@ lto = true
 [[example]]
 name = "watchdog"
 required-features = ["rt"]
+
+[[example]]
+name = "blinky"
+required-features = ["rt"]

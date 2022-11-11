@@ -1,7 +1,7 @@
 use crate::drivers::cpuss::Cpuss;
 use crate::pac::cpuss::cm4_pwr_ctl::PWR_MODE_A;
 use cortex_m::interrupt::free;
-use crate::error::Error;
+
 // pub enum CoreStatus{
 //     CM4Enabled,      //< The Cortex-M4 core is enabled: power on, clock on, no isolate, no reset and no retain. 
 //     CM4Disabled,     //< The Cortex-M4 core is disabled: power off, clock off, isolate, reset and no retain.   

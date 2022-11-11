@@ -32,17 +32,18 @@
 // 
 // let sem = Semaphore::<UnInit>::configure(&mut psoc.ipc.semaphores).unwrap();
 //```
+#![allow(unused_imports)]
 use core::marker::PhantomData;
 use cortex_m::interrupt::free;
+
 use crate::drivers::ipc::{
     Released,
-    Lock,
     Semaphores,
     IntrStructMaskBits,
     ChannelConfig,
     Syscall,
+    Lock,
 };
-
 use crate::error::Error;
 
 #[derive(Debug)]
@@ -89,8 +90,8 @@ impl<'a, S>   Semaphore<S>{
     ///The CM4 core 
     #[cfg(armv7em)]
     pub fn configure<L: Lock>(channel: &'a mut Semaphores<L>) -> Result<&'a Semaphore<Configured>, Error> {
-        //Channel shouldn't be locked if being configured.
-        //Releasing without notification just in case.       
+        //Safety: Reconstituting pointer passed from CM0+ core. So pointer is non-null and points to
+        //        what we expect.
         let sem =  unsafe{&*(channel.read_data_register() as * const Semaphore<Configured>)};
         channel.release_lock(&IntrStructMaskBits::none)?;
         Ok(sem)
@@ -101,6 +102,7 @@ impl<'a> Semaphore<Configured>{
     #[cfg(not(armv7em))]
     pub fn start(&mut self, channel: &'a mut Semaphores<Released>)->Result<(), Error>{
         let mut acquired_channel = channel.acquire_lock()?;
+        //Safety: writing data to regist
         unsafe{acquired_channel.write_data_register((self as *const Semaphore<Configured>) as *const u32)};
         acquired_channel.release_lock(&IntrStructMaskBits::none)?;
         Ok(())
@@ -136,33 +138,4 @@ impl<'a> Semaphore<Configured>{
              Err(Error::AttemptingToClearUnknownFlag)
         }
     }
-   
-   //  //internal function for checking then clearing flag.
-   //  fn clear_local(&mut self, flag_number: u32) -> Result<(), Error> {
-   //      if flag_number < 127 {
-   //      let mask = !(1 << flag_number);
-   //      if mask & self.flags == 0 {
-   //          self.flags &= !(1 << flag_number);
-   //          Ok(())
-   //      }else{
-   //          Err(Error::FlagCannotBeClearedIsNotSet)
-   //      }
-   //      }else{
-   //           Err(Error::AttemptingToClearUnknownFlag)
-   //      }
-   //  }
-   // // internal function to check flag then set if not set.    
-   //  fn set_local(&mut self, flag_number: u32) -> Result<(), Error> {
-   //      if flag_number < 127 {
-   //          if self.flags & (1 << flag_number) != 0 {
-   //              Err(Error::FlagLocked)
-   //          } else {
-   //             self.flags |= 1 << flag_number;
-   //              Ok(())
-   //          }
-   //      } else {
-   //          Err(Error::AttemptingToSetUnknownFlag)
-   //      }
-   //  }
-    
 }

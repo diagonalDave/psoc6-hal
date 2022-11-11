@@ -8,13 +8,28 @@
 
 > A Rust embedded-hal HAL for all MCUs in the Cypress PSoC6 family
 
-This crate is currently a WIP.
+This crate is currently a WIP, so the API can change at any time.
 
 ## Intro
-Currently the examples work but are only built for, and run on the
+Currently the example directory examples work but are only built for, and run on the
 CM0plus core. As work progresses the CM4 core will be available with
 FPU and thumb2 instructions. Further down the track the programmable
 hardware will also be added to the mix.
+
+The development strategy is to build out code as required to:
+   - Complete startup with rust code.
+   - Complete the implementation of the embedded hal.
+   - Determine further work from there.
+To assist with learning the mcu and rust the large Cypress/Infineon code example library will be used as test cases to ensure the functionality is equivalent, gain experience with the API and highlight dependencies etc.
+
+## Current State
+Currently the hal has working but incomplete modules for:
+- GPIO
+- Semaphores
+- Clocks
+- Delays
+A working example using these modules (both cores with c startup code) is:
+- [Semaphores](https://github.com/diagonalDave/psoc-start) see the linked repo for more details. This repo also provides an example of how c and rust code can be integrated in a project.
 
 ## OpenOCD
 OpenOCD can be used to program the psoc6 the Infineon fork is

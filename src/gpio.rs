@@ -2,8 +2,8 @@
 
 use core::marker::PhantomData;
 use cortex_m::interrupt::CriticalSection;
-use crate::error::Error;
-use crate::drivers::cpuss::interrupt::InterruptSource;
+
+
 /// Extension trait to split a GPIO peripheral in independent pins and
 /// registers.
 pub trait GpioExt {

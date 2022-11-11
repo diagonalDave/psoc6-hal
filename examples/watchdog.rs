@@ -1,4 +1,19 @@
-//! Watchdog example for the CY8CPROTO-063-BLE
+//! Watchdog example for the CY8CPROTO-063-BLE that uses
+//! driver level functions.
+//! To run this example:
+//! > cargo build --target=thumbv6m-none-eabi --example watchdog
+//! open openocd in a terminal:
+//! > cd <to psoc6_hal directory>
+//! > openocd
+//! Open another terminal and navigate to the psoc6_hal/thumbv6m-none-eabi/target/
+//!   <debug or release directory>/examples directory
+//! > arm-none-eabi-gdb -q watchdog
+//! (gdb) target extended-remote :3333
+//! (gdb) load watchdog
+//! The board is now programmed.
+//! Stop openocd and gdb to see the LEDs indicate the watchdog resets.
+//! Note the WDT reset will not be triggered while the debugger and openocd are still connected to the board.
+
 
 #![deny(unsafe_code)]
 #![deny(warnings)]
@@ -6,15 +21,16 @@
 #![no_std]
 
 extern crate panic_semihosting;
-extern crate psoc6_hal;
 
 use cortex_m_rt::entry;
+use cortex_m::interrupt::free;
 
 use psoc6_hal::delay::Delay;
-use psoc6_hal::drivers::system::{reset_cause, System};
 use psoc6_hal::prelude::*;
-use psoc6_pac::Peripherals;
-
+use psoc6_hal::pac::Peripherals;
+use psoc6_hal::drivers::system::System;
+use psoc6_hal::drivers::system::reset_cause;
+#[cfg(not(armv7m))]
 #[entry]
 fn main() -> ! {
     let p = Peripherals::take().unwrap();
@@ -24,8 +40,10 @@ fn main() -> ! {
     system.wdt_start(6000u32);
     let gpio = p.GPIO.split();
 
-    let mut led_red = gpio.p6_3.into_strong_output();
-    let mut led_green = gpio.p7_1.into_strong_output();
+    let (mut led_red, mut led_green) = free(|cs| {(
+            gpio.p6_3.into_strong_output(cs),
+            gpio.p7_1.into_strong_output(cs),
+        )});
 
     let mut delay = Delay::new(cp.SYST);
 
