@@ -10,7 +10,7 @@
 //! (gdb) target extended-remote :3333
 //! (gdb) load blinky
 //! The board is now programmed and you have two options:
-//! 1. Reset the board or stop openocd and gdb to see the LEDs blink.
+//! 1. Stop openocd and gdb then reset the board to see the LEDs happily blinking.
 //! 2. If you uncommented the hprintln! lines then continue in gdb with:
 //! (gdb) monitor semi-hosting enable
 //! (gdb) continue
